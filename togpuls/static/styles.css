@@ -526,14 +526,11 @@ h2 {
 }
 .tl-foot {
   display: flex;
-  justify-content: space-between;
   margin-top: 4px;
   font-family: var(--font-mono);
   color: var(--text-muted);
   font-size: var(--fs-small);
   padding: 0 4px;
-  flex-wrap: wrap;
-  gap: var(--space-xs);
 }
 
 /* ── Stat strip with gauge ────────────────────────────────────────────── */
