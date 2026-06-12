@@ -155,6 +155,7 @@ def analyse(
         }
     )
     platforms: list[PlatformUsage] = []
+    plat_acc: dict[str, dict] = {}  # keyed by visible track number
     passengers_modelled = 0.0
     occupancy_known_realised_total = 0
     occupancy_unknown_realised_total = 0
@@ -292,17 +293,44 @@ def analyse(
                     entry["_quays"].add(quay["id"])
                 line_situations[line_code].add(key)
 
+        # Merge by visible track number: the same physical track appears as
+        # multiple quay objects (sub-quays, and once per past/future response).
+        plat_key = quay.get("publicCode") or quay.get("name") or quay.get("id", "")
+        acc = plat_acc.get(plat_key)
+        if acc is None:
+            acc = {
+                "quay_id": quay.get("id", ""),
+                "quay_name": quay.get("name", ""),
+                "public_code": quay.get("publicCode"),
+                "scheduled": 0,
+                "realised": 0,
+                "cancelled": 0,
+                "delayed": 0,
+                "_lines": set(),
+                "_cancelled_lines": set(),
+                "_delayed_lines": set(),
+            }
+            plat_acc[plat_key] = acc
+        acc["scheduled"] += q_scheduled
+        acc["realised"] += q_realised
+        acc["cancelled"] += q_cancelled
+        acc["delayed"] += q_delayed
+        acc["_lines"] |= q_lines
+        acc["_cancelled_lines"] |= q_cancelled_lines
+        acc["_delayed_lines"] |= q_delayed_lines
+
+    for acc in plat_acc.values():
         platforms.append({
-            "quay_id": quay.get("id", ""),
-            "quay_name": quay.get("name", ""),
-            "public_code": quay.get("publicCode"),
-            "scheduled": q_scheduled,
-            "realised": q_realised,
-            "cancelled": q_cancelled,
-            "delayed": q_delayed,
-            "lines": sorted(q_lines),
-            "cancelled_lines": sorted(q_cancelled_lines),
-            "delayed_lines": sorted(q_delayed_lines),
+            "quay_id": acc["quay_id"],
+            "quay_name": acc["quay_name"],
+            "public_code": acc["public_code"],
+            "scheduled": acc["scheduled"],
+            "realised": acc["realised"],
+            "cancelled": acc["cancelled"],
+            "delayed": acc["delayed"],
+            "lines": sorted(acc["_lines"]),
+            "cancelled_lines": sorted(acc["_cancelled_lines"]),
+            "delayed_lines": sorted(acc["_delayed_lines"]),
         })
 
     # Sort platforms by cancellations asc, then busiest-first as a tiebreak
