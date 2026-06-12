@@ -9,6 +9,7 @@ function severityLabel(sev) {
 }
 
 let situationView = "grouped"; // or "per-line"
+let bigScope = "combined"; // "past" | "future" | "combined"
 let lastSituations = [];
 let lastData = null;
 let currentFrom = DEFAULT_FROM_STOP_PLACE_ID;
@@ -593,6 +594,38 @@ function buildSummary(d) {
   return sentences.join(" ");
 }
 
+// ── Render: stat counters (scoped past/future/combined) ────────────────
+
+function scopeStats(tm) {
+  if (bigScope === "past") return tm.past || {};
+  if (bigScope === "future") return tm.future || {};
+  return tm; // flat fields = combined ±window
+}
+
+function renderBigCounters() {
+  const tm = (lastData || {}).train_movements || {};
+  const s = scopeStats(tm);
+  tickTo($("cnt-scheduled"), s.scheduled ?? 0);
+  tickTo($("cnt-cancelled"), s.cancelled ?? 0);
+  tickTo($("cnt-delayed"),   s.delayed_gt_3min ?? 0);
+  $("cnt-p90").textContent = s.p90_delay_min == null ? "—" : s.p90_delay_min;
+  // "Kjørt" is meaningless for the future scope — nothing has run yet.
+  if (bigScope === "future") {
+    $("cnt-realised").textContent = "—";
+  } else {
+    tickTo($("cnt-realised"), s.realised ?? 0);
+  }
+
+  // Semantic counter colours
+  const pastSched = tm.past_scheduled || 0;
+  const utilPast = pastSched > 0 ? (100 * (tm.realised || 0)) / pastSched : 0;
+  $("cnt-cancelled").classList.toggle("neg", (s.cancelled || 0) > 0);
+  $("cnt-delayed").classList.toggle("sig-amber", (s.delayed_gt_3min || 0) > 0);
+  $("cnt-realised").classList.toggle(
+    "sig-green", bigScope !== "future" && utilPast >= 90
+  );
+}
+
 // ── Render: main ──────────────────────────────────────────────────────
 
 function render(d) {
@@ -624,18 +657,7 @@ function render(d) {
   const gaugeFutEl = $("gauge-future");
   if (gaugeFutEl) gaugeFutEl.setAttribute("aria-label", t("gauge_aria_future", { pct: utilFut ?? 0 }));
 
-  tickTo($("cnt-scheduled"), tm.scheduled ?? 0);
-  tickTo($("cnt-realised"),  tm.realised  ?? 0);
-  tickTo($("cnt-cancelled"), tm.cancelled ?? 0);
-  tickTo($("cnt-delayed"),   tm.delayed_gt_3min ?? 0);
-  $("cnt-p90").textContent = tm.p90_delay_min == null ? "—" : tm.p90_delay_min;
-
-  // Semantic counter colours
-  const cancelled = tm.cancelled || 0;
-  const delayed = tm.delayed_gt_3min || 0;
-  $("cnt-cancelled").classList.toggle("neg", cancelled > 0);
-  $("cnt-delayed").classList.toggle("sig-amber", delayed > 0);
-  $("cnt-realised").classList.toggle("sig-green", (utilPast ?? 0) >= 90);
+  renderBigCounters();
 
   $("summary-text").textContent = buildSummary(d);
   renderTimeline(d.timeline || []);
@@ -915,6 +937,22 @@ function initSituationToggle() {
   });
 }
 
+// ── Big stat scope toggle (history / future / combined) ────────────────
+
+function initBigScopeToggle() {
+  const root = $("big-scope-toggle");
+  if (!root) return;
+  root.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-scope]");
+    if (!btn || btn.dataset.scope === bigScope) return;
+    bigScope = btn.dataset.scope;
+    for (const b of root.querySelectorAll("button")) {
+      b.classList.toggle("active", b.dataset.scope === bigScope);
+    }
+    renderBigCounters();
+  });
+}
+
 // ── Lang toggle ────────────────────────────────────────────────────────
 
 function initLangToggle() {
@@ -937,6 +975,7 @@ document.addEventListener("i18n:change", () => {
 initThemeToggle();
 initLangToggle();
 initSituationToggle();
+initBigScopeToggle();
 initRoutePicker().then(refresh);
 
 if ("serviceWorker" in navigator) {

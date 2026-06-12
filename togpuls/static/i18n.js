@@ -61,6 +61,10 @@ const I18N_STRINGS = {
     "tt_more": "+{n} flere",
 
     // Big stats
+    "big_scope_label": "Tidsrom for statistikk",
+    "scope_past": "Historikk",
+    "scope_future": "Fremtid",
+    "scope_combined": "±90 min",
     "big_util_past": "gjennomført",
     "big_util_future": "forventet",
     "big_scheduled": "planlagt",
@@ -214,6 +218,10 @@ const I18N_STRINGS = {
     "tt_delayed": "{n} delayed >3 min",
     "tt_more": "+{n} more",
 
+    "big_scope_label": "Statistics time scope",
+    "scope_past": "History",
+    "scope_future": "Future",
+    "scope_combined": "±90 min",
     "big_util_past": "completed",
     "big_util_future": "expected",
     "big_scheduled": "scheduled",

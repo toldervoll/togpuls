@@ -13,6 +13,7 @@ from togpuls.models import (
     CapacityVsNormal,
     LineMovement,
     LinePassengers,
+    MovementStats,
     PassengerEstimate,
     PlatformUsage,
     Situation,
@@ -42,6 +43,15 @@ def _minutes_between(iso_a: str | None, iso_b: str | None) -> float | None:
         return (b - a).total_seconds() / 60
     except (ValueError, TypeError):
         return None
+
+
+def _delay_percentiles(delays: list[float]) -> tuple[float | None, float | None]:
+    """(median, p90) of a delay list, or (None, None) when empty."""
+    if not delays:
+        return None, None
+    s = sorted(delays)
+    p90_idx = max(0, int(len(s) * 0.9) - 1)
+    return round(statistics.median(s), 2), round(s[p90_idx], 2)
 
 
 def _first_text(field) -> str:
@@ -122,15 +132,19 @@ def analyse(
         sp_info["to_id"] = to_stop_place_id
         sp_info["to_name"] = to_name or ""
 
-    # Single pass — accumulators
+    # Single pass — accumulators, split past/future at `now`
     total_scheduled = 0
     total_realised = 0
     total_cancelled = 0
     total_delayed = 0
     past_scheduled = 0
+    past_cancelled = 0
+    past_delayed = 0
     future_scheduled = 0
     future_cancelled = 0
-    delays: list[float] = []
+    future_delayed = 0
+    delays_past: list[float] = []
+    delays_future: list[float] = []
 
     by_line_acc: dict[str, dict] = defaultdict(
         lambda: {
@@ -217,7 +231,9 @@ def analyse(
                 q_cancelled_lines.add(line_code)
                 line_bucket["cancelled"] += 1
                 line_bucket["pax_displaced"] += displaced_pax
-                if not is_past:
+                if is_past:
+                    past_cancelled += 1
+                else:
                     future_cancelled += 1
             else:
                 # Delays are known for both halves (observed or predicted).
@@ -228,7 +244,11 @@ def analyse(
                         line_bucket["delayed"] += 1
                         q_delayed += 1
                         q_delayed_lines.add(line_code)
-                    delays.append(delay)
+                        if is_past:
+                            past_delayed += 1
+                        else:
+                            future_delayed += 1
+                    (delays_past if is_past else delays_future).append(delay)
 
                 # Realised ("kjørt") only exists once the departure has passed.
                 if is_past:
@@ -300,13 +320,26 @@ def analyse(
             "delayed_gt_3min": b["delayed"],
         })
 
-    median_delay = round(statistics.median(delays), 2) if delays else None
-    if delays:
-        s = sorted(delays)
-        p90_idx = max(0, int(len(s) * 0.9) - 1)
-        p90_delay: float | None = round(s[p90_idx], 2)
-    else:
-        p90_delay = None
+    median_past, p90_past = _delay_percentiles(delays_past)
+    median_future, p90_future = _delay_percentiles(delays_future)
+    median_delay, p90_delay = _delay_percentiles(delays_past + delays_future)
+
+    past_stats: MovementStats = {
+        "scheduled": past_scheduled,
+        "realised": total_realised,
+        "cancelled": past_cancelled,
+        "delayed_gt_3min": past_delayed,
+        "median_delay_min": median_past,
+        "p90_delay_min": p90_past,
+    }
+    future_stats: MovementStats = {
+        "scheduled": future_scheduled,
+        "realised": 0,
+        "cancelled": future_cancelled,
+        "delayed_gt_3min": future_delayed,
+        "median_delay_min": median_future,
+        "p90_delay_min": p90_future,
+    }
 
     train_movements: TrainMovements = {
         "scheduled": total_scheduled,
@@ -318,6 +351,8 @@ def analyse(
         "future_cancelled": future_cancelled,
         "median_delay_min": median_delay,
         "p90_delay_min": p90_delay,
+        "past": past_stats,
+        "future": future_stats,
         "by_line": by_line,
     }
 

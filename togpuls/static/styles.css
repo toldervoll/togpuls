@@ -641,6 +641,7 @@ h2 {
 
 /* ── Stat strip with gauge ────────────────────────────────────────────── */
 .big {
+  position: relative;
   display: grid;
   grid-template-columns: auto 1fr;
   gap: var(--space-lg);
@@ -650,6 +651,16 @@ h2 {
   border-radius: var(--radius-lg);
   padding: var(--space-md) var(--space-lg);
   box-shadow: var(--shadow-sm);
+}
+
+/* Scope toggle pinned to the card corner, above the content */
+.big-toggle {
+  position: absolute;
+  top: var(--space-sm);
+  right: var(--space-sm);
+  z-index: 1;
+  margin-top: 0;
+  align-self: auto;
 }
 
 /* Gauge ring */

@@ -42,16 +42,29 @@ class LineMovement(TypedDict):
     delayed_gt_3min: int
 
 
+class MovementStats(TypedDict):
+    scheduled: int
+    realised: int  # 0 in the future scope — nothing has run yet
+    cancelled: int
+    delayed_gt_3min: int
+    median_delay_min: float | None
+    p90_delay_min: float | None
+
+
 class TrainMovements(TypedDict):
-    scheduled: int  # full ±window
+    # Flat fields = combined ±window (kept for CLI output and summary text)
+    scheduled: int
     realised: int  # past only — a train can only have run after its time
-    cancelled: int  # full ±window (cancellations are announced ahead)
-    delayed_gt_3min: int  # full ±window (observed or predicted)
+    cancelled: int  # cancellations are announced ahead, known both ways
+    delayed_gt_3min: int  # observed (past) or predicted (future)
     past_scheduled: int
     future_scheduled: int
     future_cancelled: int
     median_delay_min: float | None
     p90_delay_min: float | None
+    # Per-scope blocks for the history/future/combined toggle
+    past: MovementStats
+    future: MovementStats
     by_line: list[LineMovement]
 
 
