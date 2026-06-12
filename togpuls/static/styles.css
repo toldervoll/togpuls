@@ -15,8 +15,8 @@
 /* ── Signal Hall tokens ───────────────────────────────────────────────── */
 :root {
   /* Fonts */
-  --font-display: "IBM Plex Sans", system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-display: "Outfit", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   /* Type scale */
   --fs-hero: clamp(3rem, 8vw, 5.5rem);
@@ -25,11 +25,11 @@
   --fs-body: 0.9375rem;
   --fs-small: 0.75rem;
 
-  /* Font weights — IBM Plex Sans tops out at 600 (SemiBold) */
+  /* Font weights — Outfit supports 100–900 */
   --fw-body: 400;
   --fw-med: 500;
   --fw-heading: 600;
-  --fw-bold: 600;
+  --fw-bold: 700;
 
   /* Console surface — always dark regardless of theme */
   --console-bg:    #0a0d1f;
@@ -434,8 +434,8 @@ h2 {
   display: flex;
   align-items: flex-end;
   gap: 2px;
-  height: 140px;
-  padding: 8px 4px;
+  height: 108px;
+  padding: 6px 4px;
   background:
     repeating-linear-gradient(
       to bottom,
@@ -556,7 +556,7 @@ h2 {
 
 .gauge-wrap {
   position: relative;
-  width: 128px; height: 128px;
+  width: 152px; height: 152px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -572,12 +572,12 @@ h2 {
 .gauge-track {
   fill: none;
   stroke: var(--surface-3);
-  stroke-width: 9;
+  stroke-width: 12;
 }
 .gauge-arc {
   fill: none;
   stroke: var(--signal-green);
-  stroke-width: 9;
+  stroke-width: 12;
   stroke-linecap: round;
   stroke-dasharray: 314.16;
   stroke-dashoffset: 314.16;
@@ -595,8 +595,8 @@ h2 {
 
 .big-num {
   font-family: var(--font-mono);
-  font-size: clamp(1.5rem, 3vw, 2.25rem);
-  font-weight: var(--fw-bold);
+  font-size: clamp(1.125rem, 2.2vw, 1.625rem);
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
   line-height: 1;
   color: var(--text);
@@ -630,7 +630,7 @@ h2 {
 .num {
   font-family: var(--font-mono);
   font-size: var(--fs-stat);
-  font-weight: var(--fw-bold);
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
   line-height: 1;
   color: var(--text);
@@ -879,7 +879,7 @@ h2 {
     grid-template-columns: 1fr;
     gap: var(--space-md);
   }
-  .gauge-wrap { width: 110px; height: 110px; }
+  .gauge-wrap { width: 130px; height: 130px; }
 
   /* Platform & pax tables → card stack */
   .plat-tbl thead { display: none; }
@@ -923,7 +923,7 @@ h2 {
   .hdr-controls { gap: 5px; }
   .route { gap: 5px; }
   .dest-select { max-width: 100px; }
-  .tl-bars { height: 100px; }
+  .tl-bars { height: 80px; }
   .big-counters { grid-template-columns: repeat(3, 1fr); }
   .big { margin-inline: 16px; padding: var(--space-sm) var(--space-md); }
   .block { margin-inline: 16px; }

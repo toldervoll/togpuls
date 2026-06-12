@@ -344,8 +344,8 @@ function renderTimeline(buckets) {
       (b.scheduled === 0 ? " empty" : "") +
       (isFuture ? " future" : " past");
     bar.style.setProperty("--i", String(barIdx++));
-    const realPct = (b.realised / max) * 100;
-    const cancPct = (b.cancelled / max) * 100;
+    const realPct = (b.realised / max) * 78;
+    const cancPct = (b.cancelled / max) * 78;
     if (b.cancelled > 0) {
       const seg = document.createElement("div");
       seg.className = "seg seg-cancelled";
