@@ -1,0 +1,33 @@
+{
+  "name": "togpuls — sanntidsanalyse av togtrafikk",
+  "short_name": "togpuls",
+  "description": "Live situasjonsbilde for norske togstasjoner (default Oslo S) basert på Entur Journey Planner.",
+  "lang": "no",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#08091c",
+  "theme_color": "#181c56",
+  "categories": ["transportation", "travel", "utilities"],
+  "icons": [
+    {
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
