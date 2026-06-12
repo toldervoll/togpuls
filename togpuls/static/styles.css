@@ -492,6 +492,24 @@ h2 {
 }
 .tl-bars .bar.empty { background: transparent; }
 
+/* Stub for empty buckets — keeps the rhythm without a hard gap */
+.tl-bars .bar.empty .seg-empty {
+  height: 4px;
+  background: var(--signal-grey);
+  opacity: 0.35;
+  border-radius: 2px;
+}
+
+/* Tinted realised segment when bucket has disruptions */
+.tl-bars .bar.has-cancellations .seg-realised {
+  background: var(--signal-red);
+  box-shadow: var(--glow-red);
+}
+.tl-bars .bar.has-delays .seg-realised {
+  background: var(--signal-amber);
+  box-shadow: var(--glow-amber);
+}
+
 /* Future bars: full brightness (what we care about); past: faded history */
 .tl-bars .bar.future .seg { opacity: 1; }
 .tl-bars .bar.past .seg { opacity: 0.55; }

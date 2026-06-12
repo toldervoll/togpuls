@@ -342,24 +342,33 @@ function renderTimeline(buckets) {
     }
 
     const bar = document.createElement("div");
+    const hasCancellations = b.cancelled > 0;
+    const hasDelays = (b.delayed || 0) > 0;
     bar.className =
       "bar" +
       (b.scheduled === 0 ? " empty" : "") +
-      (isFuture ? " future" : " past");
+      (isFuture ? " future" : " past") +
+      (hasCancellations ? " has-cancellations" : hasDelays ? " has-delays" : "");
     bar.style.setProperty("--i", String(barIdx++));
     const realPct = (b.realised / max) * 78;
     const cancPct = (b.cancelled / max) * 78;
-    if (b.cancelled > 0) {
-      const seg = document.createElement("div");
-      seg.className = "seg seg-cancelled";
-      seg.style.height = cancPct + "%";
-      bar.appendChild(seg);
-    }
-    if (b.realised > 0) {
-      const seg = document.createElement("div");
-      seg.className = "seg seg-realised";
-      seg.style.height = realPct + "%";
-      bar.appendChild(seg);
+    if (b.scheduled === 0) {
+      const stub = document.createElement("div");
+      stub.className = "seg seg-empty";
+      bar.appendChild(stub);
+    } else {
+      if (hasCancellations) {
+        const seg = document.createElement("div");
+        seg.className = "seg seg-cancelled";
+        seg.style.height = cancPct + "%";
+        bar.appendChild(seg);
+      }
+      if (b.realised > 0) {
+        const seg = document.createElement("div");
+        seg.className = "seg seg-realised";
+        seg.style.height = realPct + "%";
+        bar.appendChild(seg);
+      }
     }
     bar.addEventListener("mouseenter", () => showBarTip(host, bar, b, bucketMin, isFuture));
     bar.addEventListener("mouseleave", () => hideBarTip(host));
