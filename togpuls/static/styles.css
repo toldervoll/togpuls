@@ -652,12 +652,11 @@ h2 {
   box-shadow: var(--shadow-sm);
 }
 
-/* Gauges span both rows; the scope toggle sits below the tiles, flush
-   with the tile grid's right edge */
+/* Gauges span both rows; the scope toggle sits centered below the tiles */
 .big .big-stat { grid-row: 1 / span 2; }
 .big-toggle {
   grid-column: 2;
-  justify-self: end;
+  justify-self: center;
   margin-top: 0;
   align-self: start;
 }
