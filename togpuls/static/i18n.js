@@ -148,12 +148,24 @@ const I18N_STRINGS = {
       "Siste {min} min kjørte {realised} av {past} planlagte tog {where}; " +
       "neste {min} min forventes {expected} av {future} å kjøre"
     ),
+    "summary_past_base": "Siste {min} min kjørte {realised} av {past} planlagte tog {where}",
+    "summary_future_base": (
+      "Neste {min} min forventes {expected} av {future} planlagte tog å kjøre {where}"
+    ),
     "summary_issue_cancelled": "{n} kansellert",
     "summary_issue_delayed": "{n} forsinket mer enn 3 min",
     "summary_all_clear": (
       "Alt i rute {where}: {past} tog kjørt som planlagt siste {min} min, " +
       "og alle {future} planlagte forventes å kjøre de neste {min} min."
     ),
+    "summary_all_clear_past": (
+      "Alt i rute {where}: alle {past} planlagte tog kjørte som normalt siste {min} min."
+    ),
+    "summary_all_clear_future": (
+      "Alt i rute {where}: alle {future} planlagte tog forventes å kjøre de neste {min} min."
+    ),
+    "summary_no_traffic_past": "Ingen trafikk {where} siste {min} min.",
+    "summary_no_traffic_future": "Ingen trafikk {where} de neste {min} min.",
     "summary_sit_minor.one": "Én mindre situasjon påvirker {lines}.",
     "summary_sit_minor.other": "{count} mindre situasjoner påvirker {lines}.",
     "summary_no_trains_corridor": "Ingen tog på strekningen {corridor} de neste {min} min.",
@@ -300,12 +312,24 @@ const I18N_STRINGS = {
       "In the last {min} min, {realised} of {past} scheduled trains ran {where}; " +
       "over the next {min} min, {expected} of {future} are expected to run"
     ),
+    "summary_past_base": "In the last {min} min, {realised} of {past} scheduled trains ran {where}",
+    "summary_future_base": (
+      "Over the next {min} min, {expected} of {future} scheduled trains are expected to run {where}"
+    ),
     "summary_issue_cancelled": "{n} cancelled",
     "summary_issue_delayed": "{n} delayed by more than 3 min",
     "summary_all_clear": (
       "All on schedule {where}: {past} trains ran as planned in the last {min} min, " +
       "and all {future} scheduled are expected to run over the next {min} min."
     ),
+    "summary_all_clear_past": (
+      "All on schedule {where}: all {past} scheduled trains ran as planned in the last {min} min."
+    ),
+    "summary_all_clear_future": (
+      "All on schedule {where}: all {future} scheduled trains are expected to run over the next {min} min."
+    ),
+    "summary_no_traffic_past": "No traffic {where} in the last {min} min.",
+    "summary_no_traffic_future": "No traffic {where} in the next {min} min.",
     "summary_sit_minor.one": "One minor situation affects {lines}.",
     "summary_sit_minor.other": "{count} minor situations affect {lines}.",
     "summary_no_trains_corridor": "No trains on the {corridor} corridor in the next {min} min.",

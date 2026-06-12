@@ -509,15 +509,11 @@ function buildSummary(d) {
 
   const cancelled = tm.cancelled || 0;
   const delayed = tm.delayed_gt_3min || 0;
-  const pastSched = tm.past_scheduled || 0;
-  const futSched = tm.future_scheduled || 0;
-  const futExpected = futSched - (tm.future_cancelled || 0);
-  // Clean: no cancellations or delays anywhere, and all past trains ran.
-  const trafficClean =
-    tm.scheduled > 0 &&
-    (tm.realised || 0) === pastSched &&
-    cancelled === 0 &&
-    delayed === 0;
+  const pastS = tm.past || {};
+  const futS = tm.future || {};
+  const pastSched = pastS.scheduled ?? tm.past_scheduled ?? 0;
+  const futSched = futS.scheduled ?? tm.future_scheduled ?? 0;
+  const futExpected = futSched - (futS.cancelled || 0);
   const sevHigh = sits.filter((s) => s.severity === "hoy").length;
   const sevMid = sits.filter((s) => s.severity === "middels").length;
   const minorOnly = sevHigh === 0 && sevMid === 0;
@@ -526,34 +522,94 @@ function buildSummary(d) {
     ? t("where_to_from", { from: fromName, to: toName })
     : t("where_through", { from: fromName });
 
-  // Sentence 1: traffic
+  // Sentence 1: traffic — scoped to the stat toggle (past/future/±window)
   const sentences = [];
-  if (tm.scheduled === 0) {
-    sentences.push(toName
-      ? t("summary_no_trains_corridor", { corridor, min: winMin })
-      : t("summary_no_traffic_station", { from: fromName, min: winMin }));
-  } else if (trafficClean) {
-    sentences.push(t("summary_all_clear", {
-      min: winMin,
-      past: fmtNum(pastSched),
-      future: fmtNum(futSched),
-      where,
-    }));
-  } else {
-    // Degraded: base sentence + only the non-zero problems
+  const issueList = (c, dl) => {
     const issues = [];
-    if (cancelled > 0) issues.push(t("summary_issue_cancelled", { n: fmtNum(cancelled) }));
-    if (delayed > 0) issues.push(t("summary_issue_delayed", { n: fmtNum(delayed) }));
-    let s = t("summary_trains_base", {
+    if (c > 0) issues.push(t("summary_issue_cancelled", { n: fmtNum(c) }));
+    if (dl > 0) issues.push(t("summary_issue_delayed", { n: fmtNum(dl) }));
+    return issues;
+  };
+  const pc = pastS.cancelled || 0;
+  const pd = pastS.delayed_gt_3min || 0;
+  const fc = futS.cancelled || 0;
+  const fd = futS.delayed_gt_3min || 0;
+  const cleanPast =
+    pastSched > 0 && pc === 0 && pd === 0 && (pastS.realised || 0) === pastSched;
+  const cleanFuture = futSched > 0 && fc === 0 && fd === 0;
+
+  const pastSentence = () => {
+    if (pastSched === 0) return t("summary_no_traffic_past", { where, min: winMin });
+    if (cleanPast) {
+      return t("summary_all_clear_past", { past: fmtNum(pastSched), where, min: winMin });
+    }
+    let s = t("summary_past_base", {
       min: winMin,
-      realised: fmtNum(tm.realised || 0),
+      realised: fmtNum(pastS.realised || 0),
       past: fmtNum(pastSched),
+      where,
+    });
+    const issues = issueList(pc, pd);
+    if (issues.length) s += "; " + issues.join(", ");
+    return s + ".";
+  };
+  const futureSentence = () => {
+    if (futSched === 0) return t("summary_no_traffic_future", { where, min: winMin });
+    if (cleanFuture) {
+      return t("summary_all_clear_future", { future: fmtNum(futSched), where, min: winMin });
+    }
+    let s = t("summary_future_base", {
+      min: winMin,
       expected: fmtNum(futExpected),
       future: fmtNum(futSched),
       where,
     });
+    const issues = issueList(fc, fd);
     if (issues.length) s += "; " + issues.join(", ");
-    sentences.push(s + ".");
+    return s + ".";
+  };
+
+  let trafficClean;
+  if (bigScope === "past") {
+    trafficClean = cleanPast;
+    sentences.push(pastSentence());
+  } else if (bigScope === "future") {
+    trafficClean = cleanFuture;
+    sentences.push(futureSentence());
+  } else if (tm.scheduled === 0) {
+    trafficClean = false;
+    sentences.push(toName
+      ? t("summary_no_trains_corridor", { corridor, min: winMin })
+      : t("summary_no_traffic_station", { from: fromName, min: winMin }));
+  } else if (futSched === 0) {
+    // Combined, but the window only holds history — avoid "0 av 0" noise
+    trafficClean = cleanPast;
+    sentences.push(pastSentence());
+  } else if (pastSched === 0) {
+    trafficClean = cleanFuture;
+    sentences.push(futureSentence());
+  } else {
+    trafficClean = cleanPast && cleanFuture;
+    if (trafficClean) {
+      sentences.push(t("summary_all_clear", {
+        min: winMin,
+        past: fmtNum(pastSched),
+        future: fmtNum(futSched),
+        where,
+      }));
+    } else {
+      let s = t("summary_trains_base", {
+        min: winMin,
+        realised: fmtNum(tm.realised || 0),
+        past: fmtNum(pastSched),
+        expected: fmtNum(futExpected),
+        future: fmtNum(futSched),
+        where,
+      });
+      const issues = issueList(cancelled, delayed);
+      if (issues.length) s += "; " + issues.join(", ");
+      sentences.push(s + ".");
+    }
   }
 
   // Sentence 2: situations
@@ -982,6 +1038,7 @@ function initBigScopeToggle() {
       b.classList.toggle("active", b.dataset.scope === bigScope);
     }
     renderBigCounters();
+    if (lastData) $("summary-text").textContent = buildSummary(lastData);
   });
 }
 
