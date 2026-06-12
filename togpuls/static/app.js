@@ -396,6 +396,24 @@ function buildSummary(d) {
   const corridor = toName ? `${fromName} → ${toName}` : fromName;
   const util = Math.round((cap.kapasitetsutnyttelse || 0) * 100);
 
+  const allClear =
+    tm.scheduled > 0 &&
+    tm.realised === tm.scheduled &&
+    (tm.cancelled || 0) === 0 &&
+    (tm.delayed_gt_3min || 0) === 0 &&
+    sits.length === 0;
+
+  if (allClear) {
+    const where = toName
+      ? t("where_to_from", { from: fromName, to: toName })
+      : t("where_through", { from: fromName });
+    return t("summary_all_clear", {
+      min: winMin,
+      scheduled: fmtNum(tm.scheduled),
+      where,
+    });
+  }
+
   const sentences = [];
   if (tm.scheduled > 0) {
     const where = toName

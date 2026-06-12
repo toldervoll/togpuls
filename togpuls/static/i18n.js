@@ -138,6 +138,10 @@ const I18N_STRINGS = {
       "planlagte tog å kjøre {where} ({util} % av plan); " +
       "{cancelled} kansellert, {delayed} forsinket mer enn 3 min."
     ),
+    "summary_all_clear": (
+      "Alt i rute: alle {scheduled} planlagte tog forventes å kjøre " +
+      "{where} de neste {min} min."
+    ),
     "summary_no_trains_corridor": "Ingen tog på strekningen {corridor} de neste {min} min.",
     "summary_no_traffic_station": "Ingen trafikk planlagt på {from} de neste {min} min.",
     "summary_sit_sev_wrap": " ({parts} alvorlighet)",
@@ -271,6 +275,10 @@ const I18N_STRINGS = {
       "Over the next {min} min, {realised} of {scheduled} scheduled trains " +
       "are expected to run {where} ({util} % of plan); " +
       "{cancelled} cancelled, {delayed} delayed by more than 3 min."
+    ),
+    "summary_all_clear": (
+      "All on schedule: all {scheduled} trains are expected to run " +
+      "{where} over the next {min} min."
     ),
     "summary_no_trains_corridor": "No trains on the {corridor} corridor in the next {min} min.",
     "summary_no_traffic_station": "No traffic scheduled at {from} in the next {min} min.",
