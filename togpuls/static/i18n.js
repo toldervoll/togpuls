@@ -144,13 +144,15 @@ const I18N_STRINGS = {
     "default_stop": "stoppestedet",
     "where_to_from": "fra {from} til {to}",
     "where_through": "gjennom {from}",
+    "count_all": "alle {n}",
+    "count_of": "{n} av {total}",
     "summary_trains_base": (
-      "Siste {min} min kjørte {realised} av {past} planlagte tog {where}; " +
-      "neste {min} min forventes {expected} av {future} å kjøre"
+      "Siste {min} min kjørte {pcount} planlagte tog {where}; " +
+      "neste {min} min forventes {fcount} å kjøre"
     ),
-    "summary_past_base": "Siste {min} min kjørte {realised} av {past} planlagte tog {where}",
+    "summary_past_base": "Siste {min} min kjørte {count} planlagte tog {where}",
     "summary_future_base": (
-      "Neste {min} min forventes {expected} av {future} planlagte tog å kjøre {where}"
+      "Neste {min} min forventes {count} planlagte tog å kjøre {where}"
     ),
     "summary_issue_cancelled": "{n} kansellert",
     "summary_issue_delayed": "{n} forsinket mer enn 3 min",
@@ -308,13 +310,15 @@ const I18N_STRINGS = {
     "default_stop": "the stop",
     "where_to_from": "from {from} to {to}",
     "where_through": "through {from}",
+    "count_all": "all {n}",
+    "count_of": "{n} of {total}",
     "summary_trains_base": (
-      "In the last {min} min, {realised} of {past} scheduled trains ran {where}; " +
-      "over the next {min} min, {expected} of {future} are expected to run"
+      "In the last {min} min, {pcount} scheduled trains ran {where}; " +
+      "over the next {min} min, {fcount} are expected to run"
     ),
-    "summary_past_base": "In the last {min} min, {realised} of {past} scheduled trains ran {where}",
+    "summary_past_base": "In the last {min} min, {count} scheduled trains ran {where}",
     "summary_future_base": (
-      "Over the next {min} min, {expected} of {future} scheduled trains are expected to run {where}"
+      "Over the next {min} min, {count} scheduled trains are expected to run {where}"
     ),
     "summary_issue_cancelled": "{n} cancelled",
     "summary_issue_delayed": "{n} delayed by more than 3 min",

@@ -554,6 +554,11 @@ function buildSummary(d) {
   const pd = pastS.delayed_gt_3min || 0;
   const fc = futS.cancelled || 0;
   const fd = futS.delayed_gt_3min || 0;
+  // "alle 23" reads nicer than "23 av 23" (but "1 av 1" beats "alle 1")
+  const countPhrase = (n, total) =>
+    n === total && total > 1
+      ? t("count_all", { n: fmtNum(total) })
+      : t("count_of", { n: fmtNum(n), total: fmtNum(total) });
   const cleanPast =
     pastSched > 0 && pc === 0 && pd === 0 && (pastS.realised || 0) === pastSched;
   const cleanFuture = futSched > 0 && fc === 0 && fd === 0;
@@ -565,8 +570,7 @@ function buildSummary(d) {
     }
     let s = t("summary_past_base", {
       min: winMin,
-      realised: fmtNum(pastS.realised || 0),
-      past: fmtNum(pastSched),
+      count: countPhrase(pastS.realised || 0, pastSched),
       where,
     });
     const issues = issueList(pc, pd);
@@ -580,8 +584,7 @@ function buildSummary(d) {
     }
     let s = t("summary_future_base", {
       min: winMin,
-      expected: fmtNum(futExpected),
-      future: fmtNum(futSched),
+      count: countPhrase(futExpected, futSched),
       where,
     });
     const issues = issueList(fc, fd);
@@ -620,10 +623,8 @@ function buildSummary(d) {
     } else {
       let s = t("summary_trains_base", {
         min: winMin,
-        realised: fmtNum(tm.realised || 0),
-        past: fmtNum(pastSched),
-        expected: fmtNum(futExpected),
-        future: fmtNum(futSched),
+        pcount: countPhrase(tm.realised || 0, pastSched),
+        fcount: countPhrase(futExpected, futSched),
         where,
       });
       const issues = issueList(cancelled, delayed);
