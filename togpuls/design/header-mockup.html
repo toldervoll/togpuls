@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>togpuls — header-design (mockup)</title>
+<title>togpuls — header design (mockup)</title>
 <style>
   :root {
     --bg: #f4f4f5;
@@ -95,7 +95,7 @@
 </head>
 <body>
 
-<div class="label">Bred skjerm (≥900px) — alt på én rad</div>
+<div class="label">Wide screen (≥900px) — single row</div>
 <header class="hdr hdr-wide">
   <div class="win-block">
     <span class="win">18:43–20:13</span>
@@ -103,27 +103,27 @@
   </div>
   <div class="sep"></div>
   <div class="route">
-    <select aria-label="Fra"><option>Drammen stasjon</option></select>
+    <select aria-label="From"><option>Drammen stasjon</option></select>
     <span class="route-arrow" aria-hidden="true">→</span>
-    <select aria-label="Til"><option>Oslo S</option></select>
+    <select aria-label="To"><option>Oslo S</option></select>
     <button type="button">Vis</button>
   </div>
   <div class="right">
     <span class="badge">live</span>
     <span>oppdatert 18:43</span>
-    <button type="button" class="icon-btn" aria-label="Bytt tema">☾</button>
+    <button type="button" class="icon-btn" aria-label="Toggle theme">☾</button>
   </div>
 </header>
 
-<div class="label">Mellomstor (~600–900px) — to rader</div>
+<div class="label">Medium (~600–900px) — two rows</div>
 <div class="frame-mid">
   <header class="hdr hdr-stacked">
     <div class="route">
-      <select aria-label="Fra"><option>Drammen stasjon</option></select>
+      <select aria-label="From"><option>Drammen stasjon</option></select>
       <span class="route-arrow" aria-hidden="true">→</span>
-      <select aria-label="Til"><option>Oslo S</option></select>
+      <select aria-label="To"><option>Oslo S</option></select>
       <button type="button">Vis</button>
-      <button type="button" class="icon-btn" aria-label="Bytt tema">☾</button>
+      <button type="button" class="icon-btn" aria-label="Toggle theme">☾</button>
     </div>
     <div class="meta">
       <span class="win">18:43–20:13</span>
@@ -135,15 +135,15 @@
   </header>
 </div>
 
-<div class="label">Mobil (375px)</div>
+<div class="label">Mobile (375px)</div>
 <div class="frame-mobile">
   <header class="hdr hdr-stacked">
     <div class="route">
-      <select aria-label="Fra"><option>Drammen st.</option></select>
+      <select aria-label="From"><option>Drammen st.</option></select>
       <span class="route-arrow" aria-hidden="true">→</span>
-      <select aria-label="Til"><option>Oslo S</option></select>
+      <select aria-label="To"><option>Oslo S</option></select>
       <button type="button">Vis</button>
-      <button type="button" class="icon-btn" aria-label="Bytt tema">☾</button>
+      <button type="button" class="icon-btn" aria-label="Toggle theme">☾</button>
     </div>
     <div class="meta">
       <span class="win">18:43–20:13</span>
@@ -156,8 +156,8 @@
 </div>
 
 <div class="label" style="margin-top: 32px;">
-  <button type="button" onclick="document.documentElement.toggleAttribute('data-theme') ? document.documentElement.setAttribute('data-theme','dark') : null; this.textContent = document.documentElement.hasAttribute('data-theme') ? 'Vis lys modus' : 'Vis mørk modus';"
-    style="height: 32px; font-size: 12px;">Vis mørk modus</button>
+  <button type="button" onclick="document.documentElement.toggleAttribute('data-theme') ? document.documentElement.setAttribute('data-theme','dark') : null; this.textContent = document.documentElement.hasAttribute('data-theme') ? 'Show light mode' : 'Show dark mode';"
+    style="height: 32px; font-size: 12px;">Show dark mode</button>
 </div>
 
 </body>

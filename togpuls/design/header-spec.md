@@ -1,47 +1,59 @@
-# Header-redesign — spesifikasjon
+# Header redesign — specification
 
-Mockup: `header-mockup.html` (åpne i nettleser, knapp nederst for mørk modus).
-Gjelder `header.hdr` i `static/index.html`, `static/styles.css`, `static/app.js`.
+Mockup: `header-mockup.html` (open in a browser; button at the bottom
+toggles dark mode).
+Applies to `header.hdr` in `static/index.html`, `static/styles.css`,
+`static/app.js`.
 
-## Problemer i dagens header
+Note: UI strings are Norwegian ("Vis", "oppdatert HH:MM") — keep them as
+written here.
 
-1. Tittelen (`#stop-name` + `#stop-arrow`) duplikerer rutevelgeren (`#from-select` → `#to-select`).
-2. Alt ligger på én rad uten responsiv håndtering, innholdet brekker stygt.
-3. Temaknappen har tekstetikett og annen høyde enn Apply-knappen.
-4. `#updated` viser full `18:43:52`-presisjon og prefiks-tekst som tar plass.
+## Problems in the previous header
 
-## Målbilde
+1. The title (`#stop-name` + `#stop-arrow`) duplicated the route picker
+   (`#from-select` → `#to-select`).
+2. Everything sat on one row with no responsive handling; content wrapped
+   badly.
+3. The theme button had a text label and a different height from the Apply
+   button.
+4. `#updated` showed full `18:43:52` precision plus prefix text.
 
-### Bred skjerm (≥900px) — én rad
+## Target design
 
-`[ 18:43–20:13  90 min ] | [ fra → til  Vis ] [ live  oppdatert 18:43  ☾ ]`
+### Wide screens (≥900px) — single row
 
-- Tidsvinduet (`#window`) fungerer som tittel, til venstre. Klokkeslett i
-  semibold, varighet i muted ved siden av. Vertikal skillelinje mot rutevelgeren.
-- Rutevelgeren fyller midten: selects med `flex: 1; min-width: 0`.
-- Høyre gruppe: badges (`#loading-badge`/`#stale-badge`), `#updated`, temaknapp.
+`[ 18:43–20:13  90 min ] | [ from → to  Vis ] [ live  oppdatert 18:43  ☾ ]`
 
-### Mellomstor (~600–900px) og mobil — to rader
+- The time window (`#window`) acts as the title, on the left. Time in
+  semibold, duration muted next to it. Vertical divider towards the route
+  picker.
+- The route picker fills the middle: selects with `flex: 1; min-width: 0`.
+- Right-hand group: badges (`#loading-badge`/`#stale-badge`), `#updated`,
+  theme button.
 
-- Rad 1: fra-select → til-select, Vis-knapp, temaknapp (ikon).
-- Rad 2 (metarad): tidsvindu · varighet · oppdatert-tid · badge, i muted/small.
-- Metaraden får `padding-left` lik selectens innvendige padding + border
-  (13px ved 12px padding + 1px border), slik at teksten flukter med
-  teksten inne i selecten over.
+### Medium (~600–900px) and mobile — two rows
 
-## Detaljkrav
+- Row 1: from-select → to-select, Vis button, theme button (icon only).
+- Row 2 (meta row): time window · duration · updated time · badge, in
+  muted/small style.
+- The meta row gets `padding-left` equal to the select's inner padding +
+  border (13px at 12px padding + 1px border), so the text aligns with the
+  text inside the select above.
 
-- H1: fjernes visuelt. Behold en visually-hidden h1 ("togpuls") for
-  tilgjengelighet. Rutevelgeren er eneste stedsangivelse.
-- Apply-knappen omdøpes til **«Vis»**.
-- Temaknapp: kun ikon (☾/☀), `aria-label` og `title`. Fjern tekstetiketten.
-- Lik kontrollhøyde: `.dest-select`, `.apply-btn` og `.theme-toggle` deler
-  samme høyde (36px, `box-sizing: border-box`). Bruk en felles CSS-variabel,
-  f.eks. `--ctrl-h`.
-- `#updated`: vis «oppdatert HH:MM», ikke sekunder.
-- Breakpoints: én rad ≥900px, to rader under. Under ~600px samme struktur
-  som mellomstor, bare strammere gaps og kortere stasjonsnavn får plass
-  via `min-width: 0` på selects.
-- Behold alle eksisterende id-er som `static/app.js` bruker, eller oppdater
-  app.js tilsvarende. Ingen funksjonsendringer, kun layout/markup/stil.
-- Test lys og mørk modus, og 375px-viewport.
+## Detailed requirements
+
+- H1: hidden visually. Keep a visually-hidden h1 ("togpuls") for
+  accessibility. The route picker is the only place indicator.
+- The Apply button is renamed to **"Vis"**.
+- Theme button: icon only (☾/☀), with `aria-label` and `title`. No text
+  label.
+- Equal control height: `.dest-select`, `.apply-btn` and `.theme-toggle`
+  share the same height (36px, `box-sizing: border-box`). Use a shared CSS
+  variable, e.g. `--ctrl-h`.
+- `#updated`: show "oppdatert HH:MM", no seconds.
+- Breakpoints: one row ≥900px, two rows below. Below ~600px the same
+  structure as medium, just tighter gaps; long station names fit via
+  `min-width: 0` on the selects.
+- Keep all existing ids that `static/app.js` uses, or update app.js
+  accordingly. No functional changes, only layout/markup/style.
+- Test light and dark mode, and a 375px viewport.

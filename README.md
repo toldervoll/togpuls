@@ -11,7 +11,7 @@ Ships as an HTTP API, a zero-build web widget, and a one-shot CLI.
 
 ## Quick start
 
-Requires Python 3.11+ and `make`.
+Requires Python 3.12+ and `make`.
 
 ```bash
 make configure   # one-time: creates venv, installs deps

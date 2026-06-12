@@ -1,65 +1,68 @@
-# Deploy til DigitalOcean App Platform
+# Deploying to DigitalOcean App Platform
 
-togpuls er én stateless FastAPI-container uten database. Den henter data fra
-Entur Journey Planner v3 ved forespørsel (TTL-cache 20 s) og serverer
-frontend fra `static/`.
+togpuls is a single stateless FastAPI container with no database. It fetches
+data from Entur Journey Planner v3 on request (20 s TTL cache) and serves
+the frontend from `static/`.
 
-## Forutsetninger
+## Prerequisites
 
-- Repoet ligger på GitHub og DigitalOcean har tilgang
+- The repo is on GitHub and DigitalOcean has access
   (App Platform → Settings → GitHub).
-- Filplassering: `Dockerfile`, `requirements.txt` og `deploy/` ligger i
-  pakkemappen `togpuls/`. Stier i `app.yaml` er relative til **repo-rot**
-  (mappen over pakken). Bygg-konteksten er repo-rot.
+- File locations: `requirements.txt` lives in the repo root; `Dockerfile`
+  and `deploy/` live in the package directory `togpuls/`. Paths in
+  `app.yaml` are relative to the **repo root**. The build context is the
+  repo root.
 
-## Førstegangsoppsett
+## First-time setup
 
-1. Rediger `deploy/app.yaml`: sett riktig `repo: <github-bruker>/togpuls`.
-2. Opprett appen:
+1. Edit `deploy/app.yaml`: verify `repo: kengu/togpuls`.
+2. Create the app:
 
    ```sh
    doctl apps create --spec togpuls/deploy/app.yaml
    ```
 
-   Alternativt i UI: Create App → velg repoet → «Edit App Spec» → lim inn
-   innholdet i `app.yaml`.
-3. Vent på bygg. Appen får en `*.ondigitalocean.app`-URL med TLS.
+   Alternatively in the UI: Create App → pick the repo → "Edit App Spec" →
+   paste the contents of `app.yaml`.
+3. Wait for the build. The app gets a `*.ondigitalocean.app` URL with TLS.
 
-## Senere deploys
+## Subsequent deploys
 
-`deploy_on_push: true` gjør at push til `main` bygger og deployer automatisk.
-Spec-endringer: `doctl apps update <app-id> --spec togpuls/deploy/app.yaml`.
+`deploy_on_push: true` means a push to `main` builds and deploys
+automatically. Spec changes:
+`doctl apps update <app-id> --spec togpuls/deploy/app.yaml`.
 
-## Verifisering
+## Verification
 
-- `GET /api/v1/health` → `{"ok": true}` (samme endepunkt brukes som
-  health check av App Platform).
-- `GET /` skal vise widgeten.
-- `GET /api/v1/analysis` skal returnere analyse for Oslo S.
+- `GET /api/v1/health` → `{"ok": true}` (the same endpoint is used as the
+  App Platform health check).
+- `GET /` should show the widget.
+- `GET /api/v1/analysis` should return the Oslo S analysis.
 
-## Kostnad og skalering
+## Cost and scaling
 
-- `basic-xxs` (512 MB, delt vCPU, ~5 USD/mnd) er nok: appen holder ingen
-  state og trafikken begrenses av klient-polling (30 s) + serverside-cache.
-- Ved behov: bump `instance_size_slug`, ikke `instance_count`
-  (cachen er per instans).
+- `basic-xxs` (512 MB, shared vCPU, ~5 USD/month) is enough: the app holds
+  no state and traffic is bounded by client polling (30 s) + the
+  server-side cache.
+- If needed: bump `instance_size_slug`, not `instance_count`
+  (the cache is per instance).
 
-## Miljøvariabler
+## Environment variables
 
-| Variabel | Default | Beskrivelse |
+| Variable | Default | Description |
 |---|---|---|
-| `TOGPULS_HOST` | `0.0.0.0` | Bind-adresse |
-| `TOGPULS_PORT` | `8000` | Port (må matche `http_port` i spec) |
-| `JOURNEY_PLANNER_URL` | Entur prod | Overstyr Journey Planner-endepunkt |
+| `TOGPULS_HOST` | `0.0.0.0` | Bind address |
+| `TOGPULS_PORT` | `8000` | Port (must match `http_port` in the spec) |
+| `JOURNEY_PLANNER_URL` | Entur prod | Override the Journey Planner endpoint |
 
-Entur-API-et krever ingen nøkkel, men `ET-Client-Name`-headeren er satt til
-`entur-togpuls` i `clients/journey_planner.py`. Endre den hvis appen får
-nytt navn/eierskap.
+The Entur API requires no key, but the `ET-Client-Name` header is set to
+`entur-togpuls` in `clients/journey_planner.py`. Change it if the app gets
+a new name or owner.
 
-## Lokal docker-test
+## Local docker test
 
 ```sh
-# fra repo-rot
+# from the repo root
 docker build -f togpuls/Dockerfile -t togpuls .
 docker run --rm -p 8000:8000 togpuls
 open http://localhost:8000

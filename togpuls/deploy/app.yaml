@@ -1,7 +1,6 @@
-# DigitalOcean App Platform app-spec for togpuls.
-# Bruk: doctl apps create --spec togpuls/deploy/app.yaml
-# eller lim inn i App Platform-UI ("Edit App Spec").
-# Husk å bytte ut <github-bruker> under.
+# DigitalOcean App Platform app spec for togpuls.
+# Usage: doctl apps create --spec togpuls/deploy/app.yaml
+# or paste into the App Platform UI ("Edit App Spec").
 name: togpuls
 region: ams
 services:
@@ -9,7 +8,7 @@ services:
     dockerfile_path: togpuls/Dockerfile
     source_dir: /
     github:
-      repo: <github-bruker>/togpuls
+      repo: kengu/togpuls
       branch: main
       deploy_on_push: true
     http_port: 8000
