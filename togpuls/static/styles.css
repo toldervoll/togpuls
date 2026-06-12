@@ -196,23 +196,17 @@ h2 {
   max-width: 1100px;
   margin: 0 auto;
   display: grid;
-  gap: 18px;
-  /* No top/bottom padding — console flush at top, footer has its own */
+  gap: 12px;
+  padding-top: var(--page-pad);
+  padding-inline: var(--page-pad);
 }
 
 /* ── Console (top section, adapts to current theme) ──────────────────── */
 .console {
   background: var(--surface);
-  border-bottom: 1px solid var(--border);
-}
-
-/* On screens smaller than max-width, #app has implicit body margin.
-   Use viewport-relative width to ensure console is truly edge-to-edge. */
-@media (max-width: 1164px) {
-  .console {
-    width: 100vw;
-    margin-left: calc(50% - 50vw);
-  }
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
 
 /* ── Header ───────────────────────────────────────────────────────────── */
@@ -221,7 +215,7 @@ h2 {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-xs);
-  padding: 14px var(--page-pad) 12px;
+  padding: 14px var(--space-md) 12px;
   justify-content: space-between;
 }
 
@@ -426,7 +420,7 @@ h2 {
 
 /* ── Timeline (hero) ──────────────────────────────────────────────────── */
 .tl-section {
-  padding: 0 var(--page-pad) var(--space-md);
+  padding: 0 var(--space-md) var(--space-xs);
 }
 
 .tl-bars {
@@ -544,7 +538,6 @@ h2 {
   border-radius: var(--radius-lg);
   padding: var(--space-md) var(--space-lg);
   box-shadow: var(--shadow-sm);
-  margin-inline: var(--page-pad);
 }
 
 /* Gauge ring */
@@ -656,7 +649,6 @@ h2 {
   padding: var(--space-md);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
-  margin-inline: var(--page-pad);
 }
 
 /* Summary callout — editorial voice */
@@ -869,7 +861,6 @@ h2 {
 .ftr {
   text-align: center;
   padding: var(--space-sm) 0 var(--space-xl);
-  margin-inline: var(--page-pad);
   border-top: 1px solid var(--border);
 }
 
@@ -925,10 +916,7 @@ h2 {
   .dest-select { max-width: 100px; }
   .tl-bars { height: 80px; }
   .big-counters { grid-template-columns: repeat(3, 1fr); }
-  .big { margin-inline: 16px; padding: var(--space-sm) var(--space-md); }
-  .block { margin-inline: 16px; }
-  .ftr { margin-inline: 16px; }
-  #app { gap: 12px; }
+  .big { padding: var(--space-sm) var(--space-md); }
 }
 
 /* ── Reduced motion ───────────────────────────────────────────────────── */
