@@ -11,6 +11,10 @@ help:                ## Show available targets
 configure: venv/.installed  ## Create venv and install dependencies
 
 venv/.installed: requirements.txt
+	@if [ -d venv ] && ! $(PIP) --version >/dev/null 2>&1; then \
+	    echo "venv looks stale (pip broken — likely moved from another path); rebuilding"; \
+	    rm -rf venv; \
+	fi
 	@test -d venv || python3 -m venv venv
 	$(PIP) install --quiet --upgrade pip
 	$(PIP) install --quiet -r requirements.txt
