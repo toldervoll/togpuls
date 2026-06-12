@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>togpuls — header-design (mockup)</title>
+<style>
+  :root {
+    --bg: #f4f4f5;
+    --surface: #ffffff;
+    --border: rgba(0, 0, 0, 0.12);
+    --text: #18181b;
+    --text-muted: #71717a;
+    --text-faint: #a1a1aa;
+    --success-bg: #e1f5ee;
+    --success-text: #085041;
+    --radius: 12px;
+    --ctrl-h: 36px;
+  }
+  [data-theme="dark"] {
+    --bg: #18181b;
+    --surface: #232327;
+    --border: rgba(255, 255, 255, 0.14);
+    --text: #f4f4f5;
+    --text-muted: #a1a1aa;
+    --text-faint: #71717a;
+    --success-bg: #085041;
+    --success-text: #9fe1cb;
+  }
+  body {
+    margin: 0; padding: 24px;
+    background: var(--bg); color: var(--text);
+    font-family: system-ui, sans-serif;
+  }
+  .label { font-size: 12px; color: var(--text-muted); margin: 24px 0 8px; }
+  .label:first-child { margin-top: 0; }
+
+  select, button {
+    height: var(--ctrl-h);
+    box-sizing: border-box;
+    font: inherit; font-size: 14px;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0 12px;
+  }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--text-faint); }
+  .icon-btn {
+    width: var(--ctrl-h); padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; line-height: 1;
+  }
+
+  .hdr {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+  }
+  .route { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+  .route select { flex: 1; min-width: 0; }
+  .route-arrow { color: var(--text-faint); user-select: none; }
+  .meta {
+    display: flex; align-items: center; flex-wrap: wrap;
+    gap: 10px;
+    font-size: 13px; color: var(--text-muted);
+  }
+  .meta .win { font-weight: 600; color: var(--text); }
+  .meta .dot { color: var(--text-faint); }
+  .badge {
+    background: var(--success-bg); color: var(--success-text);
+    font-size: 11px; padding: 2px 8px; border-radius: 999px;
+  }
+
+  .hdr-wide { display: flex; align-items: center; gap: 16px; padding: 10px 16px; }
+  .hdr-wide .win-block { display: flex; align-items: baseline; gap: 8px; flex-shrink: 0; }
+  .hdr-wide .win-block .win { font-size: 17px; font-weight: 600; }
+  .hdr-wide .win-block .dur { font-size: 13px; color: var(--text-muted); }
+  .hdr-wide .sep { width: 1px; align-self: stretch; background: var(--border); }
+  .hdr-wide .right {
+    display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+    font-size: 13px; color: var(--text-muted);
+  }
+
+  .hdr-stacked .meta { margin-top: 8px; padding-left: 13px; }
+
+  .frame-mid { width: 560px; max-width: 100%; }
+  .frame-mobile { width: 343px; max-width: 100%; }
+  .frame-mobile .hdr { padding: 12px; }
+  .frame-mobile .route { gap: 6px; }
+  .frame-mobile .meta { font-size: 12px; gap: 8px; }
+</style>
+</head>
+<body>
+
+<div class="label">Bred skjerm (≥900px) — alt på én rad</div>
+<header class="hdr hdr-wide">
+  <div class="win-block">
+    <span class="win">18:43–20:13</span>
+    <span class="dur">90 min</span>
+  </div>
+  <div class="sep"></div>
+  <div class="route">
+    <select aria-label="Fra"><option>Drammen stasjon</option></select>
+    <span class="route-arrow" aria-hidden="true">→</span>
+    <select aria-label="Til"><option>Oslo S</option></select>
+    <button type="button">Vis</button>
+  </div>
+  <div class="right">
+    <span class="badge">live</span>
+    <span>oppdatert 18:43</span>
+    <button type="button" class="icon-btn" aria-label="Bytt tema">☾</button>
+  </div>
+</header>
+
+<div class="label">Mellomstor (~600–900px) — to rader</div>
+<div class="frame-mid">
+  <header class="hdr hdr-stacked">
+    <div class="route">
+      <select aria-label="Fra"><option>Drammen stasjon</option></select>
+      <span class="route-arrow" aria-hidden="true">→</span>
+      <select aria-label="Til"><option>Oslo S</option></select>
+      <button type="button">Vis</button>
+      <button type="button" class="icon-btn" aria-label="Bytt tema">☾</button>
+    </div>
+    <div class="meta">
+      <span class="win">18:43–20:13</span>
+      <span>90 min</span>
+      <span class="dot">·</span>
+      <span>oppdatert 18:43</span>
+      <span class="badge">live</span>
+    </div>
+  </header>
+</div>
+
+<div class="label">Mobil (375px)</div>
+<div class="frame-mobile">
+  <header class="hdr hdr-stacked">
+    <div class="route">
+      <select aria-label="Fra"><option>Drammen st.</option></select>
+      <span class="route-arrow" aria-hidden="true">→</span>
+      <select aria-label="Til"><option>Oslo S</option></select>
+      <button type="button">Vis</button>
+      <button type="button" class="icon-btn" aria-label="Bytt tema">☾</button>
+    </div>
+    <div class="meta">
+      <span class="win">18:43–20:13</span>
+      <span>90 min</span>
+      <span class="dot">·</span>
+      <span>oppdatert 18:43</span>
+      <span class="badge">live</span>
+    </div>
+  </header>
+</div>
+
+<div class="label" style="margin-top: 32px;">
+  <button type="button" onclick="document.documentElement.toggleAttribute('data-theme') ? document.documentElement.setAttribute('data-theme','dark') : null; this.textContent = document.documentElement.hasAttribute('data-theme') ? 'Vis lys modus' : 'Vis mørk modus';"
+    style="height: 32px; font-size: 12px;">Vis mørk modus</button>
+</div>
+
+</body>
+</html>

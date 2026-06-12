@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="no">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>togpuls — Oslo S</title>
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f6f6f9" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#08091c" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="togpuls" />
+    <link rel="manifest" href="/static/manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/static/icons/icon-512.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/apple-touch-icon.png" />
+    <script>
+      // Apply persisted theme before stylesheet paints to avoid a flash.
+      try {
+        const t = localStorage.getItem("togpuls-theme");
+        if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
+    </script>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main id="app">
+      <header class="hdr">
+        <h1 class="sr-only">togpuls</h1>
+        <div class="meta">
+          <span id="window" class="win">—</span>
+          <span id="window-dur" class="dur">—</span>
+          <span class="dot" aria-hidden="true">·</span>
+          <span id="updated">aldri</span>
+          <span id="loading-badge" class="badge badge-info hidden">laster…</span>
+          <span id="stale-badge" class="badge hidden">utdatert</span>
+        </div>
+        <div class="sep" aria-hidden="true"></div>
+        <div class="route" role="group" aria-label="Rute">
+          <select id="from-select" class="dest-select" aria-label="Fra"></select>
+          <span class="route-arrow" aria-hidden="true">→</span>
+          <select id="to-select" class="dest-select" aria-label="Til">
+            <option value="">Alle retninger</option>
+          </select>
+          <button id="apply-btn" class="apply-btn" type="button">Vis</button>
+        </div>
+        <button id="theme-toggle" class="theme-toggle icon-btn" type="button"
+                aria-label="Bytt tema" title="Bytt tema">
+          <span id="theme-toggle-icon" aria-hidden="true">☾</span>
+        </button>
+      </header>
+
+      <section class="block timeline">
+        <h2>±90 min <span id="timeline-meta" class="muted"></span></h2>
+        <div id="timeline-bars" class="tl-bars"></div>
+        <div class="tl-axis muted small">
+          <span>−90 min</span><span>−60</span><span>−30</span><span>now</span><span>+30</span><span>+60</span><span>+90</span>
+        </div>
+      </section>
+
+      <section class="big">
+        <div class="big-stat">
+          <div id="util-pct" class="big-num">—</div>
+          <div class="big-label">utnyttelse</div>
+        </div>
+        <div class="big-counters">
+          <div><span id="cnt-scheduled" class="num">0</span><span class="cap">planlagt</span></div>
+          <div><span id="cnt-realised" class="num">0</span><span class="cap">kjørt</span></div>
+          <div><span id="cnt-cancelled" class="num neg">0</span><span class="cap">kansellert</span></div>
+          <div><span id="cnt-delayed" class="num">0</span><span class="cap">forsinket &gt;3 min</span></div>
+          <div><span id="cnt-p90" class="num">—</span><span class="cap">p90-forsinkelse (min)</span></div>
+        </div>
+      </section>
+
+      <section class="block summary">
+        <p id="summary-text" class="summary-text">—</p>
+      </section>
+
+      <section class="block">
+        <details class="collapsible">
+          <summary>
+            <h2>Situasjoner <span id="sit-count" class="muted">(0)</span></h2>
+            <div id="sit-summary" class="block-headline muted small">ingen data</div>
+            <div id="sit-view-toggle" class="seg-toggle" role="group" aria-label="Situasjonsvisning">
+              <button type="button" data-view="grouped" class="active">Gruppert</button>
+              <button type="button" data-view="per-line">Per linje</button>
+            </div>
+          </summary>
+          <ul id="situations" class="sit-list"></ul>
+        </details>
+      </section>
+
+      <section class="block">
+        <details class="collapsible">
+          <summary>
+            <h2>Spor <span id="plat-meta" class="muted">(topp 10)</span></h2>
+            <div id="plat-summary" class="block-headline muted small">ingen data</div>
+          </summary>
+          <table class="plat-tbl">
+            <thead>
+              <tr><th>Spor</th><th>Planlagt</th><th>Kjørt</th><th>Kansellert</th><th>Forsinket</th><th>Linjer</th></tr>
+            </thead>
+            <tbody id="platforms"></tbody>
+          </table>
+        </details>
+      </section>
+
+      <section class="block pax">
+        <details class="collapsible">
+          <summary>
+            <h2>Passasjerestimat <span class="muted">(modellert)</span></h2>
+            <div class="pax-headline">
+              <div>~<span id="pax-num">—</span> passasjerer i vinduet</div>
+              <div id="pax-affected" class="pax-affected hidden">
+                ↳ ~<span id="pax-affected-num">0</span> på
+                <span id="pax-affected-lines-text">0 linjer</span> med avvik
+                <span class="muted small">(delmengde av totalen ovenfor)</span>
+              </div>
+              <div id="pax-displaced" class="pax-displaced hidden">
+                ↳ ~<span id="pax-displaced-num">0</span> rammet av kanselleringer
+                <span class="muted small">(hypotetisk; ikke med i totalen over)</span>
+              </div>
+            </div>
+          </summary>
+          <div id="pax-coverage" class="muted small"></div>
+          <table id="pax-by-line" class="pax-tbl hidden">
+            <thead>
+              <tr><th>Linje</th><th>Pax kjørt</th><th>Kansellert</th><th>Pax forskyvet</th><th>Situasjoner</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <div id="pax-note" class="muted small"></div>
+        </details>
+      </section>
+
+      <footer class="ftr muted small">
+        togpuls · data: Entur Journey Planner v3 · oppdatering hver 30 s · buffer 20 s
+      </footer>
+    </main>
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>
