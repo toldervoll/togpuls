@@ -995,7 +995,7 @@ h2 {
   align-items: center;
   gap: 6px;
   padding: 2px 10px 2px 8px;
-  margin-right: 6px;
+  margin: 0 3px;
   border-radius: 999px;
   font-family: var(--font-mono);
   font-size: 0.6875rem;
@@ -1098,10 +1098,12 @@ h2 {
   .plat-tbl tbody tr td:nth-child(n+2):nth-child(-n+5) {
     text-align: left;
   }
-  /* Line status = card footer strip: full width, chips only, no label */
+  /* Line status = card footer strip: full width, chips only, no label,
+     centered under the counters */
   .plat-tbl tbody tr td:last-child {
     grid-column: 1 / -1;
     margin-top: 2px;
+    text-align: center;
   }
   .plat-tbl tbody tr td:last-child::before { content: none; }
 }
