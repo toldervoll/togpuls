@@ -3,6 +3,9 @@
 # or paste into the App Platform UI ("Edit App Spec").
 name: togpuls
 region: ams
+domains:
+  - domain: togpuls.kengu.no
+    type: PRIMARY
 services:
   - name: web
     dockerfile_path: togpuls/Dockerfile
