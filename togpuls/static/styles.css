@@ -57,11 +57,6 @@
   --seg-glow-amber: none;
   --seg-glow-red:   none;
 
-  /* Bar-segment fill colors — muted in light mode, vivid in dark */
-  --seg-color-ok:    #a8d4b8;
-  --seg-color-warn:  #d9b870;
-  --seg-color-err:   #e898a8;
-  --seg-color-empty: #c8c8c4;
 
   /* Spacing */
   --space-xs2: 0.25rem;
@@ -122,10 +117,6 @@
   --seg-glow-green: var(--glow-green);
   --seg-glow-amber: var(--glow-amber);
   --seg-glow-red:   var(--glow-red);
-  --seg-color-ok:    var(--signal-green);
-  --seg-color-warn:  var(--signal-amber);
-  --seg-color-err:   var(--signal-red);
-  --seg-color-empty: var(--signal-grey);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -150,10 +141,6 @@
     --seg-glow-green: var(--glow-green);
     --seg-glow-amber: var(--glow-amber);
     --seg-glow-red:   var(--glow-red);
-    --seg-color-ok:    var(--signal-green);
-    --seg-color-warn:  var(--signal-amber);
-    --seg-color-err:   var(--signal-red);
-    --seg-color-empty: var(--signal-grey);
   }
 }
 
@@ -506,12 +493,12 @@ h2 {
 
 .tl-bars .bar .seg { width: 100%; }
 .tl-bars .bar .seg-realised {
-  background: var(--seg-color-ok);
+  background: var(--signal-green);
   border-radius: 2px 2px 0 0;
   box-shadow: var(--seg-glow-green);
 }
 .tl-bars .bar .seg-cancelled {
-  background: var(--seg-color-err);
+  background: var(--signal-red);
   border-radius: 2px 2px 0 0;
   box-shadow: var(--seg-glow-red);
 }
@@ -520,18 +507,18 @@ h2 {
 /* Stub for empty buckets — keeps the rhythm without a hard gap */
 .tl-bars .bar.empty .seg-empty {
   height: 4px;
-  background: var(--seg-color-empty);
-  opacity: 0.35;
+  background: var(--border);
+  opacity: 0.6;
   border-radius: 2px;
 }
 
 /* Tinted realised segment when bucket has disruptions */
 .tl-bars .bar.has-cancellations .seg-realised {
-  background: var(--seg-color-err);
+  background: var(--signal-red);
   box-shadow: var(--seg-glow-red);
 }
 .tl-bars .bar.has-delays .seg-realised {
-  background: var(--seg-color-warn);
+  background: var(--signal-amber);
   box-shadow: var(--seg-glow-amber);
 }
 
