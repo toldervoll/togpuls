@@ -324,7 +324,6 @@ h2 {
 
 /* Shared control base */
 .dest-select,
-.apply-btn,
 .lang-toggle,
 .theme-toggle {
   height: var(--ctrl-h);
@@ -349,14 +348,12 @@ h2 {
   background-position: right 10px center;
 }
 .dest-select:hover,
-.apply-btn:hover,
 .lang-toggle:hover,
 .theme-toggle:hover {
   border-color: var(--signal-blue);
   background: rgba(78,167,255,0.08);
 }
 .dest-select:focus-visible,
-.apply-btn:focus-visible,
 .lang-toggle:focus-visible,
 .theme-toggle:focus-visible {
   outline: 2px solid var(--signal-blue);
@@ -367,19 +364,6 @@ h2 {
   color: var(--text);
 }
 
-.apply-btn {
-  color: var(--text-muted);
-  font-weight: var(--fw-heading);
-}
-.apply-btn[data-dirty="true"] {
-  background: var(--signal-blue);
-  color: #fff;
-  border-color: var(--signal-blue);
-}
-.apply-btn[data-dirty="true"]:hover {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
-}
 
 .route-arrow {
   color: var(--text-muted);

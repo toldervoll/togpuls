@@ -215,10 +215,6 @@ function setLoading(loading) {
   if (badge) badge.classList.toggle("hidden", !loading);
 }
 
-function setApplyDirty(dirty) {
-  const btn = $("apply-btn");
-  if (btn) btn.setAttribute("data-dirty", dirty ? "true" : "false");
-}
 
 // ── Render: situations ─────────────────────────────────────────────────
 
@@ -789,8 +785,7 @@ async function refresh() {
 async function initRoutePicker() {
   const fromSel = $("from-select");
   const toSel = $("to-select");
-  const applyBtn = $("apply-btn");
-  if (!fromSel || !toSel || !applyBtn) return;
+  if (!fromSel || !toSel) return;
 
   try {
     const savedFrom = localStorage.getItem("togpuls-from");
@@ -821,34 +816,14 @@ async function initRoutePicker() {
   }
   fromSel.value = currentFrom;
   toSel.value = currentTo;
-  setApplyDirty(false);
 
   const swapBtn = $("swap-btn");
 
-  function updateDirty() {
+  function applyRoute() {
     if (toSel.value && toSel.value === fromSel.value) {
       toSel.value = "";
     }
-    const dirty =
-      (fromSel.value || DEFAULT_FROM_STOP_PLACE_ID) !== currentFrom ||
-      toSel.value !== currentTo;
-    setApplyDirty(dirty);
     if (swapBtn) swapBtn.disabled = !toSel.value;
-  }
-  fromSel.addEventListener("change", updateDirty);
-  toSel.addEventListener("change", updateDirty);
-  if (swapBtn) {
-    swapBtn.disabled = !toSel.value;
-    swapBtn.addEventListener("click", () => {
-      if (!toSel.value) return;
-      const from = fromSel.value;
-      fromSel.value = toSel.value;
-      toSel.value = from;
-      updateDirty();
-    });
-  }
-
-  applyBtn.addEventListener("click", () => {
     currentFrom = fromSel.value || DEFAULT_FROM_STOP_PLACE_ID;
     currentTo = toSel.value;
     try {
@@ -856,9 +831,22 @@ async function initRoutePicker() {
       if (currentTo) localStorage.setItem("togpuls-to", currentTo);
       else localStorage.removeItem("togpuls-to");
     } catch (e) {}
-    setApplyDirty(false);
     refresh();
-  });
+  }
+
+  fromSel.addEventListener("change", applyRoute);
+  toSel.addEventListener("change", applyRoute);
+
+  if (swapBtn) {
+    swapBtn.disabled = !toSel.value;
+    swapBtn.addEventListener("click", () => {
+      if (!toSel.value) return;
+      const from = fromSel.value;
+      fromSel.value = toSel.value;
+      toSel.value = from;
+      applyRoute();
+    });
+  }
 }
 
 // ── Theme toggle ───────────────────────────────────────────────────────
