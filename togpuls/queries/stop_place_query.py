@@ -32,6 +32,9 @@ query OsloSDepartures(
         realtimeState
         date
         occupancyStatus
+        destinationDisplay {
+          frontText
+        }
         serviceJourney {
           id
           line {

@@ -99,6 +99,14 @@ class PlatformUsage(TypedDict, total=False):
     delayed_lines: list[str]
 
 
+class TimelineDeparture(TypedDict):
+    line: str
+    destination: str
+    aimed: str
+    delay_min: int  # rounded; 0 when on time or under 1 min
+    cancelled: bool
+
+
 class TimelineBucket(TypedDict):
     bucket_start: str
     minutes_offset: int  # signed: negative = past, 0 = boundary, positive = future
@@ -106,6 +114,8 @@ class TimelineBucket(TypedDict):
     scheduled: int
     realised: int
     cancelled: int
+    delayed: int  # realised with delay > DELAY_THRESHOLD_MIN
+    departures: list[TimelineDeparture]
 
 
 class Analysis(TypedDict, total=False):

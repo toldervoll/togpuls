@@ -319,6 +319,9 @@ function renderTimeline(buckets) {
     return;
   }
   const max = Math.max(...buckets.map((b) => b.scheduled), 1);
+  const bucketMin = buckets.length > 1
+    ? (buckets[1].minutes_offset ?? 0) - (buckets[0].minutes_offset ?? 0)
+    : 5;
   let pastSched = 0, futSched = 0, futCanc = 0;
   let nowMarkerInserted = false;
   let barIdx = 0;
@@ -358,15 +361,8 @@ function renderTimeline(buckets) {
       seg.style.height = realPct + "%";
       bar.appendChild(seg);
     }
-    const time = fmtTime(b.bucket_start);
-    const off = b.minutes_offset ?? 0;
-    const when = off === 0
-      ? t("time_now")
-      : off < 0 ? t("time_ago", { n: -off }) : t("time_in", { n: off });
-    const verb = isFuture
-      ? t("bar_future_tooltip", { realised: b.realised, cancelled: b.cancelled, scheduled: b.scheduled })
-      : t("bar_past_tooltip", { realised: b.realised, cancelled: b.cancelled, scheduled: b.scheduled });
-    bar.title = `${time} (${when}): ${verb}`;
+    bar.addEventListener("mouseenter", () => showBarTip(host, bar, b, bucketMin, isFuture));
+    bar.addEventListener("mouseleave", () => hideBarTip(host));
     host.appendChild(bar);
   }
   if (!nowMarkerInserted) {
@@ -380,6 +376,115 @@ function renderTimeline(buckets) {
     future: futSched,
     fcancelled: futCanc,
   });
+}
+
+// ── Timeline tooltip ───────────────────────────────────────────────────
+
+const TIP_MAX_ROWS = 6;
+
+function _tipEl(host) {
+  let tip = host.querySelector(".tl-tip");
+  if (!tip) {
+    tip = document.createElement("div");
+    tip.className = "tl-tip";
+    tip.setAttribute("role", "tooltip");
+    tip.hidden = true;
+    host.appendChild(tip);
+  }
+  return tip;
+}
+
+function showBarTip(host, bar, b, bucketMin, isFuture) {
+  const tip = _tipEl(host);
+  tip.replaceChildren();
+
+  // Header: time range + relative time
+  const start = fmtTime(b.bucket_start);
+  let end = "";
+  try {
+    end = fmtTime(new Date(new Date(b.bucket_start).getTime() + bucketMin * 60000).toISOString());
+  } catch { /* leave empty */ }
+  const off = b.minutes_offset ?? 0;
+  const when = off === 0
+    ? t("time_now")
+    : off < 0 ? t("time_ago", { n: -off }) : t("time_in", { n: off });
+  const head = document.createElement("div");
+  head.className = "tl-tip-head";
+  head.textContent = end ? `${start}–${end} · ${when}` : `${start} · ${when}`;
+  tip.appendChild(head);
+
+  // Count line — state-aware, no zero-noise
+  const counts = document.createElement("div");
+  counts.className = "tl-tip-counts";
+  const parts = [];
+  if (b.scheduled === 0) {
+    parts.push({ text: t("tt_none"), cls: "" });
+  } else if (isFuture) {
+    parts.push({ text: t("tt_planned", { scheduled: fmtNum(b.scheduled) }), cls: "" });
+  } else {
+    parts.push({ text: t("tt_ran", { realised: fmtNum(b.realised), scheduled: fmtNum(b.scheduled) }), cls: "" });
+  }
+  if (b.cancelled > 0) parts.push({ text: t("tt_cancelled", { n: fmtNum(b.cancelled) }), cls: "tl-tip-red" });
+  if ((b.delayed || 0) > 0) parts.push({ text: t("tt_delayed", { n: fmtNum(b.delayed) }), cls: "tl-tip-amber" });
+  parts.forEach((p, i) => {
+    if (i > 0) counts.appendChild(document.createTextNode(" · "));
+    const span = document.createElement("span");
+    if (p.cls) span.className = p.cls;
+    span.textContent = p.text;
+    counts.appendChild(span);
+  });
+  tip.appendChild(counts);
+
+  // Departure rows
+  const deps = b.departures || [];
+  if (deps.length) {
+    const list = document.createElement("div");
+    list.className = "tl-tip-deps";
+    for (const d of deps.slice(0, TIP_MAX_ROWS)) {
+      const row = document.createElement("div");
+      row.className = "tl-tip-dep" + (d.cancelled ? " cancelled" : "");
+      const line = document.createElement("span");
+      line.className = "tl-tip-line";
+      line.textContent = d.line;
+      const dest = document.createElement("span");
+      dest.className = "tl-tip-dest";
+      dest.textContent = d.destination ? `→ ${d.destination}` : "";
+      const time = document.createElement("span");
+      time.className = "tl-tip-time";
+      time.textContent = fmtTime(d.aimed);
+      row.append(line, dest, time);
+      if (!d.cancelled && d.delay_min > 0) {
+        const delay = document.createElement("span");
+        delay.className = "tl-tip-delay";
+        delay.textContent = `+${d.delay_min} min`;
+        row.appendChild(delay);
+      }
+      list.appendChild(row);
+    }
+    if (deps.length > TIP_MAX_ROWS) {
+      const more = document.createElement("div");
+      more.className = "tl-tip-more";
+      more.textContent = t("tt_more", { n: deps.length - TIP_MAX_ROWS });
+      list.appendChild(more);
+    }
+    tip.appendChild(list);
+  }
+
+  // Position above the bar, clamped to the host; flip below when the
+  // viewport has no room above (console sits at the top of the page).
+  tip.hidden = false;
+  const hostRect = host.getBoundingClientRect();
+  const barRect = bar.getBoundingClientRect();
+  tip.classList.toggle("below", hostRect.top - tip.offsetHeight - 12 < 0);
+  const center = barRect.left - hostRect.left + barRect.width / 2;
+  const half = tip.offsetWidth / 2;
+  const left = Math.max(4, Math.min(center - half, hostRect.width - tip.offsetWidth - 4));
+  tip.style.left = `${left}px`;
+}
+
+function hideBarTip(host) {
+  const tip = host.querySelector(".tl-tip");
+  if (tip) tip.hidden = true;
 }
 
 // ── Render: summary ────────────────────────────────────────────────────

@@ -417,6 +417,8 @@ def build_timeline(
             "scheduled": 0,
             "realised": 0,
             "cancelled": 0,
+            "delayed": 0,
+            "departures": [],
         })
 
     for resp in (past_response, future_response):
@@ -445,8 +447,28 @@ def build_timeline(
                     continue
                 b = buckets[idx]
                 b["scheduled"] += 1
-                if call.get("cancellation"):
+                cancelled = bool(call.get("cancellation"))
+                delay = _minutes_between(aimed, _call_expected(call))
+                delayed = (
+                    not cancelled
+                    and delay is not None
+                    and delay > DELAY_THRESHOLD_MIN
+                )
+                if cancelled:
                     b["cancelled"] += 1
                 else:
                     b["realised"] += 1
+                    if delayed:
+                        b["delayed"] += 1
+                line = (call.get("serviceJourney") or {}).get("line") or {}
+                dest = call.get("destinationDisplay") or {}
+                b["departures"].append({
+                    "line": line.get("publicCode") or line.get("id") or "?",
+                    "destination": dest.get("frontText") or "",
+                    "aimed": aimed,
+                    "delay_min": round(delay) if delay is not None and delay >= 1 else 0,
+                    "cancelled": cancelled,
+                })
+    for b in buckets:
+        b["departures"].sort(key=lambda d: d["aimed"])
     return buckets
