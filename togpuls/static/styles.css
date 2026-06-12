@@ -486,6 +486,11 @@ h2 {
   border-radius: 2px 2px 0 0;
   box-shadow: var(--seg-glow-red);
 }
+.tl-bars .bar .seg-delayed {
+  background: var(--signal-amber);
+  border-radius: 2px 2px 0 0;
+  box-shadow: var(--seg-glow-amber);
+}
 .tl-bars .bar.empty { background: transparent; }
 
 /* Stub for empty buckets — keeps the rhythm without a hard gap */
@@ -496,15 +501,6 @@ h2 {
   border-radius: 2px;
 }
 
-/* Tinted realised segment when bucket has disruptions */
-.tl-bars .bar.has-cancellations .seg-realised {
-  background: var(--signal-red);
-  box-shadow: var(--seg-glow-red);
-}
-.tl-bars .bar.has-delays .seg-realised {
-  background: var(--signal-amber);
-  box-shadow: var(--seg-glow-amber);
-}
 
 /* Future bars: full brightness (what we care about); past: faded history */
 .tl-bars .bar.future .seg { opacity: 1; }

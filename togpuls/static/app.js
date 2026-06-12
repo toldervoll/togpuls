@@ -338,31 +338,37 @@ function renderTimeline(buckets) {
     }
 
     const bar = document.createElement("div");
-    const hasCancellations = b.cancelled > 0;
-    const hasDelays = (b.delayed || 0) > 0;
     bar.className =
       "bar" +
       (b.scheduled === 0 ? " empty" : "") +
-      (isFuture ? " future" : " past") +
-      (hasCancellations ? " has-cancellations" : hasDelays ? " has-delays" : "");
+      (isFuture ? " future" : " past");
     bar.style.setProperty("--i", String(barIdx++));
-    const realPct = (b.realised / max) * 78;
-    const cancPct = (b.cancelled / max) * 78;
+    const delayed = b.delayed || 0;
+    const clean = Math.max(0, b.realised - delayed);
+    const cancPct    = (b.cancelled / max) * 78;
+    const delayedPct = (delayed      / max) * 78;
+    const cleanPct   = (clean        / max) * 78;
     if (b.scheduled === 0) {
       const stub = document.createElement("div");
       stub.className = "seg seg-empty";
       bar.appendChild(stub);
     } else {
-      if (hasCancellations) {
+      if (b.cancelled > 0) {
         const seg = document.createElement("div");
         seg.className = "seg seg-cancelled";
         seg.style.height = cancPct + "%";
         bar.appendChild(seg);
       }
-      if (b.realised > 0) {
+      if (delayed > 0) {
+        const seg = document.createElement("div");
+        seg.className = "seg seg-delayed";
+        seg.style.height = delayedPct + "%";
+        bar.appendChild(seg);
+      }
+      if (clean > 0) {
         const seg = document.createElement("div");
         seg.className = "seg seg-realised";
-        seg.style.height = realPct + "%";
+        seg.style.height = cleanPct + "%";
         bar.appendChild(seg);
       }
     }
