@@ -106,13 +106,26 @@ function fmtNum(x) {
   return new Intl.NumberFormat(intlLocale()).format(x);
 }
 
-function formatLineStatus(cancelledLines, delayedLines) {
+function renderLineStatus(cell, cancelledLines, delayedLines) {
+  cell.replaceChildren();
   const c = cancelledLines || [];
   const d = delayedLines || [];
-  const parts = [];
-  if (c.length) parts.push(t("line_status_cancelled", { lines: c.join(", ") }));
-  if (d.length) parts.push(t("line_status_delayed", { lines: d.join(", ") }));
-  return parts.join(", ") || "—";
+  if (!c.length && !d.length) {
+    cell.textContent = "—";
+    return;
+  }
+  if (c.length) {
+    const chip = document.createElement("span");
+    chip.className = "plat-line-chip red";
+    chip.textContent = t("line_status_cancelled", { lines: c.join(", ") });
+    cell.appendChild(chip);
+  }
+  if (d.length) {
+    const chip = document.createElement("span");
+    chip.className = "plat-line-chip amber";
+    chip.textContent = t("line_status_delayed", { lines: d.join(", ") });
+    cell.appendChild(chip);
+  }
 }
 
 function fmtTime(iso) {
@@ -155,9 +168,16 @@ function setGauge(svgId, pct) {
   const gauge = $(svgId);
   const arc = gauge ? gauge.querySelector(".gauge-arc") : null;
   if (!arc || !gauge) return;
-  const clamped = Math.max(0, Math.min(100, pct || 0));
-  const offset = GAUGE_CIRC * (1 - clamped / 100);
   arc.style.transition = prefersReducedMotion() ? "none" : "";
+  if (pct == null) {
+    // No data — bare track, no arc (a 0-length arc still paints its
+    // rounded line cap as a dot)
+    arc.style.strokeDashoffset = GAUGE_CIRC;
+    arc.style.stroke = "transparent";
+    return;
+  }
+  const clamped = Math.max(0, Math.min(100, pct));
+  const offset = GAUGE_CIRC * (1 - clamped / 100);
   arc.style.strokeDashoffset = offset;
   arc.style.stroke = clamped >= 90
     ? "var(--signal-green)" : clamped >= 70
@@ -727,8 +747,8 @@ function render(d) {
     ? Math.round((100 * (futSched - futCanc)) / futSched) : null;
   $("util-pct-past").textContent = utilPast == null ? "—" : utilPast + " %";
   $("util-pct-future").textContent = utilFut == null ? "—" : utilFut + " %";
-  setGauge("gauge-past", utilPast ?? 0);
-  setGauge("gauge-future", utilFut ?? 0);
+  setGauge("gauge-past", utilPast);
+  setGauge("gauge-future", utilFut);
   const gaugePastEl = $("gauge-past");
   if (gaugePastEl) gaugePastEl.setAttribute("aria-label", t("gauge_aria_past", { pct: utilPast ?? 0 }));
   const gaugeFutEl = $("gauge-future");
@@ -798,7 +818,7 @@ function render(d) {
       `<td>${fmtNum(p.delayed || 0)}</td>` +
       `<td class="lines"></td>`;
     tr.children[0].textContent = code;
-    tr.children[5].textContent = formatLineStatus(p.cancelled_lines, p.delayed_lines);
+    renderLineStatus(tr.children[5], p.cancelled_lines, p.delayed_lines);
     // data-label for mobile card layout
     tr.children[0].dataset.label = t("tbl_platform");
     tr.children[1].dataset.label = t("tbl_scheduled");
