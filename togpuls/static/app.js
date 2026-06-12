@@ -2,10 +2,14 @@ const POLL_MS = 30_000;
 const DEFAULT_FROM_STOP_PLACE_ID = "NSR:StopPlace:337"; // Oslo S
 const SEVERITIES = ["hoy", "middels", "lav", "ukjent"];
 const SEVERITY_RANK = { hoy: 0, middels: 1, lav: 2, ukjent: 3 };
-const SEVERITY_LABEL_NB = { hoy: "HØY", middels: "MIDDELS", lav: "LAV", ukjent: "UKJENT" };
+
+function severityLabel(sev) {
+  return t(`sev_label.${sev}`);
+}
 
 let situationView = "grouped"; // or "per-line"
 let lastSituations = [];
+let lastData = null;
 let currentFrom = DEFAULT_FROM_STOP_PLACE_ID;
 let currentTo = ""; // empty = all directions
 let refreshTimer = null;
@@ -93,22 +97,22 @@ function fmtPct(x) {
 
 function fmtNum(x) {
   if (x === null || x === undefined) return "—";
-  return new Intl.NumberFormat("nb-NO").format(x);
+  return new Intl.NumberFormat(intlLocale()).format(x);
 }
 
 function formatLineStatus(cancelledLines, delayedLines) {
   const c = cancelledLines || [];
   const d = delayedLines || [];
   const parts = [];
-  if (c.length) parts.push(`${c.join(", ")} kansellert`);
-  if (d.length) parts.push(`${d.join(", ")} forsinket`);
+  if (c.length) parts.push(t("line_status_cancelled", { lines: c.join(", ") }));
+  if (d.length) parts.push(t("line_status_delayed", { lines: d.join(", ") }));
   return parts.join(", ") || "—";
 }
 
 function fmtTime(iso) {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" });
+    return new Date(iso).toLocaleTimeString(intlLocale(), { hour: "2-digit", minute: "2-digit" });
   } catch {
     return iso;
   }
@@ -140,21 +144,24 @@ function renderSituations(sits) {
   if (sitCount) {
     sitCount.textContent =
       groups.length === totalCount
-        ? `(${totalCount})`
-        : `(${groups.length} unike, ${totalCount} totalt)`;
+        ? t("sit_count_simple", { n: totalCount })
+        : t("sit_count_unique", { unique: groups.length, total: totalCount });
   }
   if (sitSummary) {
     if (groups.length === 0) {
-      sitSummary.textContent = "Ingen aktive SIRI-SX-situasjoner.";
+      sitSummary.textContent = t("no_active_situations");
     } else {
       const sevHigh = groups.filter((g) => g.severity === "hoy").length;
       const sevMid = groups.filter((g) => g.severity === "middels").length;
       const sevLow = groups.length - sevHigh - sevMid;
       const sevParts = [];
-      if (sevHigh) sevParts.push(`${sevHigh} høy`);
-      if (sevMid) sevParts.push(`${sevMid} middels`);
-      if (sevLow) sevParts.push(`${sevLow} lav`);
-      sitSummary.textContent = `${sevParts.join(" · ")} — øverst: ${groups[0].text}`;
+      if (sevHigh) sevParts.push(t("sev_count.hoy", { n: sevHigh }));
+      if (sevMid) sevParts.push(t("sev_count.middels", { n: sevMid }));
+      if (sevLow) sevParts.push(t("sev_count.lav", { n: sevLow }));
+      sitSummary.textContent = t("sit_summary_top", {
+        parts: sevParts.join(" · "),
+        text: groups[0].text,
+      });
     }
   }
 
@@ -162,7 +169,9 @@ function renderSituations(sits) {
   if (sits.length === 0) {
     const li = document.createElement("li");
     li.className = "sev-lav";
-    li.innerHTML = `<span class="sit-sev sev-lav">ingen</span><div class="sit-body"><div class="sit-text muted">Ingen aktive SIRI-SX-situasjoner.</div></div>`;
+    li.innerHTML = `<span class="sit-sev sev-lav"></span><div class="sit-body"><div class="sit-text muted"></div></div>`;
+    li.querySelector(".sit-sev").textContent = t("sev_label.ingen");
+    li.querySelector(".sit-text").textContent = t("no_active_situations");
     ul.appendChild(li);
     return;
   }
@@ -175,12 +184,13 @@ function renderSituations(sits) {
       li.className = `sev-${sev}`;
       const countBadge = r.texts.length > 1 ? `<span class="sit-count-badge">×${r.texts.length}</span>` : "";
       li.innerHTML = `
-        <span class="sit-sev sev-${sev}">${SEVERITY_LABEL_NB[sev] || sev.toUpperCase()}</span>
+        <span class="sit-sev sev-${sev}"></span>
         <div class="sit-body">
           <div class="sit-text"></div>
           <div class="sit-lines"></div>
         </div>
         ${countBadge}`;
+      li.querySelector(".sit-sev").textContent = severityLabel(sev);
       li.querySelector(".sit-text").textContent = r.line;
       li.querySelector(".sit-lines").textContent = r.texts.join(" · ");
       ul.appendChild(li);
@@ -193,14 +203,15 @@ function renderSituations(sits) {
       const lines = g.lines.join(", ");
       const countBadge = g.count > 1 ? `<span class="sit-count-badge">×${g.count}</span>` : "";
       li.innerHTML = `
-        <span class="sit-sev sev-${sev}">${SEVERITY_LABEL_NB[sev] || sev.toUpperCase()}</span>
+        <span class="sit-sev sev-${sev}"></span>
         <div class="sit-body">
           <div class="sit-text"></div>
           <div class="sit-lines"></div>
         </div>
         ${countBadge}`;
+      li.querySelector(".sit-sev").textContent = severityLabel(sev);
       li.querySelector(".sit-text").textContent = g.text;
-      li.querySelector(".sit-lines").textContent = lines ? `Linjer: ${lines}` : "";
+      li.querySelector(".sit-lines").textContent = lines ? t("sit_lines_prefix", { lines }) : "";
       ul.appendChild(li);
     }
   }
@@ -212,7 +223,7 @@ function renderTimeline(buckets) {
   if (!host) return; // stale HTML — section not present
   host.innerHTML = "";
   if (!buckets.length) {
-    if (meta) meta.textContent = "(ingen data)";
+    if (meta) meta.textContent = t("timeline_no_data");
     return;
   }
   const max = Math.max(...buckets.map((b) => b.scheduled), 1);
@@ -227,7 +238,7 @@ function renderTimeline(buckets) {
       if (!nowMarkerInserted) {
         const marker = document.createElement("div");
         marker.className = "now-marker";
-        marker.title = "nå";
+        marker.title = t("time_now");
         host.appendChild(marker);
         nowMarkerInserted = true;
       }
@@ -254,13 +265,15 @@ function renderTimeline(buckets) {
       seg.style.height = realPct + "%";
       bar.appendChild(seg);
     }
-    const t = fmtTime(b.bucket_start);
+    const time = fmtTime(b.bucket_start);
     const off = b.minutes_offset ?? 0;
-    const when = off === 0 ? "nå" : off < 0 ? `${-off} min siden` : `om ${off} min`;
+    const when = off === 0
+      ? t("time_now")
+      : off < 0 ? t("time_ago", { n: -off }) : t("time_in", { n: off });
     const verb = isFuture
-      ? `${b.realised} planlagt, ${b.cancelled} kansellert, ${b.scheduled} totalt`
-      : `${b.realised} gått, ${b.cancelled} kansellert, ${b.scheduled} totalt`;
-    bar.title = `${t} (${when}): ${verb}`;
+      ? t("bar_future_tooltip", { realised: b.realised, cancelled: b.cancelled, scheduled: b.scheduled })
+      : t("bar_past_tooltip", { realised: b.realised, cancelled: b.cancelled, scheduled: b.scheduled });
+    bar.title = `${time} (${when}): ${verb}`;
     host.appendChild(bar);
   }
   // If the response was entirely past (no future buckets), still emit the
@@ -268,12 +281,14 @@ function renderTimeline(buckets) {
   if (!nowMarkerInserted) {
     const marker = document.createElement("div");
     marker.className = "now-marker";
-    marker.title = "nå";
+    marker.title = t("time_now");
     host.appendChild(marker);
   }
-  meta.textContent =
-    `(siste 90 min: ${pastSched} planlagt · ` +
-    `neste 90 min: ${futSched} planlagt, ${futCanc} kansellert)`;
+  meta.textContent = t("timeline_meta", {
+    past: pastSched,
+    future: futSched,
+    fcancelled: futCanc,
+  });
 }
 
 function buildSummary(d) {
@@ -283,7 +298,7 @@ function buildSummary(d) {
   const sits = d.situations || [];
   const win = (d.stop_place && d.stop_place.window) || {};
   const winMin = win.minutter ?? 0;
-  const fromName = (d.stop_place && d.stop_place.name) || "stoppestedet";
+  const fromName = (d.stop_place && d.stop_place.name) || t("default_stop");
   const toName = d.stop_place && d.stop_place.to_name;
   const corridor = toName ? `${fromName} → ${toName}` : fromName;
   const util = Math.round((cap.kapasitetsutnyttelse || 0) * 100);
@@ -291,17 +306,21 @@ function buildSummary(d) {
   const sentences = [];
   if (tm.scheduled > 0) {
     const where = toName
-      ? `fra ${fromName} til ${toName}`
-      : `gjennom ${fromName}`;
-    sentences.push(
-      `I løpet av de neste ${winMin} min forventes ${fmtNum(tm.realised)} av ${fmtNum(tm.scheduled)} ` +
-      `planlagte tog å kjøre ${where} (${util} % av plan); ` +
-      `${fmtNum(tm.cancelled)} kansellert, ${fmtNum(tm.delayed_gt_3min)} forsinket mer enn 3 min.`
-    );
+      ? t("where_to_from", { from: fromName, to: toName })
+      : t("where_through", { from: fromName });
+    sentences.push(t("summary_trains", {
+      min: winMin,
+      realised: fmtNum(tm.realised),
+      scheduled: fmtNum(tm.scheduled),
+      where,
+      util,
+      cancelled: fmtNum(tm.cancelled),
+      delayed: fmtNum(tm.delayed_gt_3min),
+    }));
   } else if (toName) {
-    sentences.push(`Ingen tog på strekningen ${corridor} de neste ${winMin} min.`);
+    sentences.push(t("summary_no_trains_corridor", { corridor, min: winMin }));
   } else {
-    sentences.push(`Ingen trafikk planlagt på ${fromName} de neste ${winMin} min.`);
+    sentences.push(t("summary_no_traffic_station", { from: fromName, min: winMin }));
   }
 
   if (sits.length > 0) {
@@ -311,34 +330,37 @@ function buildSummary(d) {
     const sevHigh = sits.filter((s) => s.severity === "hoy").length;
     const sevMid = sits.filter((s) => s.severity === "middels").length;
     const sevParts = [];
-    if (sevHigh) sevParts.push(`${sevHigh} høy`);
-    if (sevMid) sevParts.push(`${sevMid} middels`);
-    const sevTxt = sevParts.length ? ` (${sevParts.join(", ")} alvorlighet)` : "";
-    const sitWord = sits.length === 1 ? "situasjon" : "situasjoner";
-    const lineWord = affLines.length === 1 ? "linje" : "linjer";
-    let s =
-      `${sits.length} aktiv${sits.length === 1 ? "" : "e"} ${sitWord}${sevTxt} ` +
-      `påvirker ${affLines.length} ${lineWord}; ` +
-      `~${aff} passasjerer reiser akkurat nå på forstyrrede linjer`;
+    if (sevHigh) sevParts.push(t("sev_count.hoy", { n: sevHigh }));
+    if (sevMid) sevParts.push(t("sev_count.middels", { n: sevMid }));
+    const sevTxt = sevParts.length
+      ? t("summary_sit_sev_wrap", { parts: sevParts.join(", ") })
+      : "";
+    let s = tp("summary_sit", sits.length, {
+      count: sits.length,
+      sev: sevTxt,
+      lines: tp("lines_count", affLines.length),
+      aff,
+    });
     if (disp > 0) {
-      s += `, og ~${fmtNum(disp)} til fikk toget sitt kansellert og må finne et alternativ`;
+      s += t("summary_sit_displaced", { n: fmtNum(disp) });
     }
     sentences.push(s + ".");
   } else {
-    sentences.push("Ingen aktive SIRI-SX-situasjoner.");
+    sentences.push(t("no_active_situations"));
   }
 
   return sentences.join(" ");
 }
 
 function render(d) {
+  lastData = d;
   // Header: the route picker is now the only stop label, no h1 to update.
   const w = d.stop_place?.window || {};
   $("window").textContent = `${fmtTime(w.fra)}–${fmtTime(w.til)}`;
   const durEl = $("window-dur");
   if (durEl) durEl.textContent = w.minutter != null ? `${w.minutter} min` : "—";
-  $("updated").textContent =
-    `oppdatert ${new Date().toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" })}`;
+  const now = new Date().toLocaleTimeString(intlLocale(), { hour: "2-digit", minute: "2-digit" });
+  $("updated").textContent = t("updated_at", { time: now });
 
   // Big stat
   const tm = d.train_movements || {};
@@ -358,7 +380,7 @@ function render(d) {
   // Spor (topp 10)
   const allPlats = d.platform_utilization || [];
   const plats = allPlats.slice(0, 10);
-  $("plat-meta").textContent = `(topp ${plats.length} av ${allPlats.length})`;
+  $("plat-meta").textContent = t("platforms_topx_of_y", { x: plats.length, y: allPlats.length });
   const platSummary = $("plat-summary");
   if (platSummary) {
     const totalCanc = allPlats.reduce((s, p) => s + (p.cancelled || 0), 0);
@@ -367,21 +389,23 @@ function render(d) {
     const delayedLineSet = new Set();
     for (const p of allPlats) for (const ln of p.delayed_lines || []) delayedLineSet.add(ln);
     const busiest = allPlats.slice().sort((a, b) => (b.scheduled || 0) - (a.scheduled || 0))[0];
-    const parts = [`${allPlats.length} spor`];
+    const parts = [t("plat_count", { n: allPlats.length })];
     if (busiest && busiest.scheduled > 0) {
       const label = busiest.public_code || busiest.quay_name || busiest.quay_id;
-      parts.push(`travleste: Spor ${label} (${busiest.scheduled} avganger)`);
+      parts.push(t("plat_busiest", { label, n: busiest.scheduled }));
     }
     if (totalCanc > 0) {
-      parts.push(`${platsWithCanc} med kanselleringer (${totalCanc} totalt)`);
+      parts.push(t("plat_with_canc", { count: platsWithCanc, total: totalCanc }));
     } else {
-      parts.push("ingen kanselleringer");
+      parts.push(t("plat_no_canc"));
     }
     if (delayedLineSet.size > 0) {
-      const lineWord = delayedLineSet.size === 1 ? "linje" : "linjer";
-      parts.push(`${delayedLineSet.size} ${lineWord} forsinket (${totalDel} avganger)`);
+      parts.push(tp("plat_delayed_lines", delayedLineSet.size, {
+        count: delayedLineSet.size,
+        deps: totalDel,
+      }));
     } else {
-      parts.push("ingen forsinkelser");
+      parts.push(t("plat_no_delays"));
     }
     platSummary.textContent = parts.join(" · ");
   }
@@ -404,15 +428,16 @@ function render(d) {
 
   // Passenger box
   const pax = d.passenger_estimate || {};
-  $("pax-num").textContent = fmtNum(pax.estimated_passengers);
-  $("pax-note").textContent = pax.note || "";
+  $("pax-headline-main").textContent = t("pax_main", { n: fmtNum(pax.estimated_passengers) });
+  $("pax-note").textContent = t("pax_note");
   const known = pax.occupancy_known_realised || 0;
   const unknown = pax.occupancy_unknown_realised || 0;
   const totalReal = known + unknown;
   if (totalReal > 0) {
     const pct = Math.round((100 * known) / totalReal);
-    $("pax-coverage").textContent =
-      `${known}/${totalReal} kjørte avganger (${pct} %) hadde reelt belegg; resten bruker standard belegg=${pax.load_factor}`;
+    $("pax-coverage").textContent = t("pax_coverage", {
+      known, total: totalReal, pct, lf: pax.load_factor,
+    });
   } else {
     $("pax-coverage").textContent = "";
   }
@@ -420,12 +445,10 @@ function render(d) {
   const affLines = pax.affected_lines || [];
   const affEl = $("pax-affected");
   if (affLines.length > 0) {
-    $("pax-affected-num").textContent = fmtNum(pax.affected_passengers);
-    const linesEl = $("pax-affected-lines-text");
-    if (linesEl) {
-      linesEl.textContent =
-        affLines.length === 1 ? "1 linje" : `${affLines.length} linjer`;
-    }
+    $("pax-affected-text").textContent = t("pax_affected_sentence", {
+      n: fmtNum(pax.affected_passengers),
+      lines: tp("lines_count", affLines.length),
+    });
     affEl.classList.remove("hidden");
   } else {
     affEl.classList.add("hidden");
@@ -433,7 +456,9 @@ function render(d) {
 
   const dispEl = $("pax-displaced");
   if ((pax.displaced_passengers || 0) > 0) {
-    $("pax-displaced-num").textContent = fmtNum(pax.displaced_passengers);
+    $("pax-displaced-text").textContent = t("pax_displaced_sentence", {
+      n: fmtNum(pax.displaced_passengers),
+    });
     dispEl.classList.remove("hidden");
   } else {
     dispEl.classList.add("hidden");
@@ -555,10 +580,10 @@ function updateThemeToggleLabel() {
   const icon = $("theme-toggle-icon");
   const btn = $("theme-toggle");
   if (!icon) return;
-  const t = currentTheme();
-  icon.textContent = t === "dark" ? "☀" : "☾";
+  const theme = currentTheme();
+  icon.textContent = theme === "dark" ? "☀" : "☾";
   if (btn) {
-    const label = t === "dark" ? "Bytt til lys modus" : "Bytt til mørk modus";
+    const label = theme === "dark" ? t("theme_to_light") : t("theme_to_dark");
     btn.setAttribute("aria-label", label);
     btn.setAttribute("title", label);
   }
@@ -601,7 +626,22 @@ function initSituationToggle() {
   });
 }
 
+function initLangToggle() {
+  const btn = $("lang-toggle");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    setLang(currentLang() === "no" ? "en" : "no");
+  });
+}
+
+// Re-render dynamic content when the language changes.
+document.addEventListener("i18n:change", () => {
+  updateThemeToggleLabel();
+  if (lastData) render(lastData);
+});
+
 initThemeToggle();
+initLangToggle();
 initSituationToggle();
 initRoutePicker().then(refresh);
 

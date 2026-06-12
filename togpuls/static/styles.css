@@ -183,8 +183,8 @@ h2 {
 */
 .hdr {
   display: grid;
-  grid-template-columns: auto auto 1px 1fr auto auto auto auto;
-  grid-template-areas: "win dur sep route upd lbadge sbadge theme";
+  grid-template-columns: auto auto 1px 1fr auto auto auto auto auto;
+  grid-template-areas: "win dur sep route upd lbadge sbadge lang theme";
   align-items: center;
   column-gap: var(--space-sm);
   padding: var(--space-sm) var(--space-md);
@@ -208,14 +208,15 @@ h2 {
 #loading-badge { grid-area: lbadge; }
 #stale-badge { grid-area: sbadge; }
 #theme-toggle { grid-area: theme; }
+#lang-toggle { grid-area: lang; }
 
 /* Stacked layout: two rows */
 @media (max-width: 899px) {
   .hdr {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr auto auto;
     grid-template-areas:
-      "route theme"
-      "meta meta";
+      "route lang theme"
+      "meta meta meta";
     column-gap: var(--space-xs);
     row-gap: var(--space-xs);
     padding: var(--space-sm) var(--space-md);
@@ -258,7 +259,8 @@ h2 {
 /* Selects + buttons share height and rounded corners */
 .dest-select,
 .apply-btn,
-.theme-toggle {
+.theme-toggle,
+.lang-toggle {
   height: var(--ctrl-h);
   box-sizing: border-box;
   border: 1px solid var(--border);
@@ -273,10 +275,20 @@ h2 {
 .dest-select { padding: 0 10px; }
 .dest-select:hover,
 .apply-btn:hover,
-.theme-toggle:hover { border-color: var(--accent); }
+.theme-toggle:hover,
+.lang-toggle:hover { border-color: var(--accent); }
 .dest-select:focus-visible,
 .apply-btn:focus-visible,
-.theme-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.theme-toggle:focus-visible,
+.lang-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.lang-toggle {
+  padding: 0 10px;
+  font-size: 0.75rem;
+  font-weight: var(--fw-heading);
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+}
 
 .route-arrow {
   color: var(--text-muted);
