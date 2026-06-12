@@ -123,6 +123,8 @@ async def _compute_analysis(
         horizon_min=horizon_min,
         to_stop_place_id=to_stop_place_id,
         to_name=to_name,
+        past_response=past_response,
+        look_back_min=TIMELINE_SPAN_MIN,
     )
     analysis["timeline"] = build_timeline(
         past_response, future_response,

@@ -64,7 +64,9 @@ def _call_expected(call: dict) -> str | None:
     return call.get("expectedDepartureTime") or call.get("expectedArrivalTime")
 
 
-def _in_window(call: dict, now: datetime, horizon_min: int) -> bool:
+def _in_window(
+    call: dict, now: datetime, horizon_min: int, look_back_min: int = 0
+) -> bool:
     aimed = _call_aimed(call)
     if not aimed:
         return False
@@ -72,7 +74,7 @@ def _in_window(call: dict, now: datetime, horizon_min: int) -> bool:
         ts = datetime.fromisoformat(aimed)
     except (ValueError, TypeError):
         return False
-    return now <= ts <= now + timedelta(minutes=horizon_min)
+    return now - timedelta(minutes=look_back_min) <= ts <= now + timedelta(minutes=horizon_min)
 
 
 def _passes_through(sj: dict, from_id: str, to_id: str) -> bool:
@@ -99,13 +101,15 @@ def analyse(
     horizon_min: int,
     to_stop_place_id: str | None = None,
     to_name: str | None = None,
+    past_response: dict | None = None,
+    look_back_min: int = 0,
 ) -> Analysis:
     stop_place = response.get("stopPlace") or {}
     quays = stop_place.get("quays") or []
     from_id = stop_place.get("id", "")
 
     window: Window = {
-        "fra": now.isoformat(),
+        "fra": (now - timedelta(minutes=look_back_min)).isoformat(),
         "til": (now + timedelta(minutes=horizon_min)).isoformat(),
         "minutter": horizon_min,
     }
@@ -143,7 +147,14 @@ def analyse(
     # line_code -> set of situationNumbers touching that line
     line_situations: dict[str, set[str]] = defaultdict(set)
 
-    for quay in quays:
+    # Collect quays from both responses; use a seen set to skip duplicate calls
+    # (boundary calls that appear in both past and future queries).
+    seen_calls: set[tuple] = set()
+    all_quays = list(quays)
+    if past_response:
+        all_quays += (past_response.get("stopPlace") or {}).get("quays") or []
+
+    for quay in all_quays:
         q_scheduled = 0
         q_realised = 0
         q_cancelled = 0
@@ -153,8 +164,14 @@ def analyse(
         q_delayed_lines: set[str] = set()
 
         for call in quay.get("estimatedCalls") or []:
-            if not _in_window(call, now, horizon_min):
+            if not _in_window(call, now, horizon_min, look_back_min):
                 continue
+            aimed = _call_aimed(call)
+            line_key = ((call.get("serviceJourney") or {}).get("id") or "")
+            dedup_key = (quay.get("id", ""), aimed, line_key)
+            if dedup_key in seen_calls:
+                continue
+            seen_calls.add(dedup_key)
             sj = call.get("serviceJourney") or {}
             if to_stop_place_id and not _passes_through(sj, from_id, to_stop_place_id):
                 continue
