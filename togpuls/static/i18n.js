@@ -137,15 +137,18 @@ const I18N_STRINGS = {
     "default_stop": "stoppestedet",
     "where_to_from": "fra {from} til {to}",
     "where_through": "gjennom {from}",
-    "summary_trains": (
+    "summary_trains_base": (
       "I løpet av de neste {min} min forventes {realised} av {scheduled} " +
-      "planlagte tog å kjøre {where} ({util} % av plan); " +
-      "{cancelled} kansellert, {delayed} forsinket mer enn 3 min."
+      "planlagte tog å kjøre {where} ({util} % av plan)"
     ),
+    "summary_issue_cancelled": "{n} kansellert",
+    "summary_issue_delayed": "{n} forsinket mer enn 3 min",
     "summary_all_clear": (
       "Alt i rute: alle {scheduled} planlagte tog forventes å kjøre " +
       "{where} de neste {min} min."
     ),
+    "summary_sit_minor.one": "Én mindre situasjon påvirker {lines}.",
+    "summary_sit_minor.other": "{count} mindre situasjoner påvirker {lines}.",
     "summary_no_trains_corridor": "Ingen tog på strekningen {corridor} de neste {min} min.",
     "summary_no_traffic_station": "Ingen trafikk planlagt på {from} de neste {min} min.",
     "summary_sit_sev_wrap": " ({parts} alvorlighet)",
@@ -279,15 +282,18 @@ const I18N_STRINGS = {
     "default_stop": "the stop",
     "where_to_from": "from {from} to {to}",
     "where_through": "through {from}",
-    "summary_trains": (
+    "summary_trains_base": (
       "Over the next {min} min, {realised} of {scheduled} scheduled trains " +
-      "are expected to run {where} ({util} % of plan); " +
-      "{cancelled} cancelled, {delayed} delayed by more than 3 min."
+      "are expected to run {where} ({util} % of plan)"
     ),
+    "summary_issue_cancelled": "{n} cancelled",
+    "summary_issue_delayed": "{n} delayed by more than 3 min",
     "summary_all_clear": (
       "All on schedule: all {scheduled} trains are expected to run " +
       "{where} over the next {min} min."
     ),
+    "summary_sit_minor.one": "One minor situation affects {lines}.",
+    "summary_sit_minor.other": "{count} minor situations affect {lines}.",
     "summary_no_trains_corridor": "No trains on the {corridor} corridor in the next {min} min.",
     "summary_no_traffic_station": "No traffic scheduled at {from} in the next {min} min.",
     "summary_sit_sev_wrap": " ({parts} severity)",

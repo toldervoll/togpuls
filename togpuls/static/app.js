@@ -505,50 +505,66 @@ function buildSummary(d) {
   const corridor = toName ? `${fromName} → ${toName}` : fromName;
   const util = Math.round((cap.kapasitetsutnyttelse || 0) * 100);
 
-  const allClear =
+  const cancelled = tm.cancelled || 0;
+  const delayed = tm.delayed_gt_3min || 0;
+  const trafficClean =
     tm.scheduled > 0 &&
     tm.realised === tm.scheduled &&
-    (tm.cancelled || 0) === 0 &&
-    (tm.delayed_gt_3min || 0) === 0 &&
-    sits.length === 0;
+    cancelled === 0 &&
+    delayed === 0;
+  const sevHigh = sits.filter((s) => s.severity === "hoy").length;
+  const sevMid = sits.filter((s) => s.severity === "middels").length;
+  const minorOnly = sevHigh === 0 && sevMid === 0;
 
-  if (allClear) {
-    const where = toName
-      ? t("where_to_from", { from: fromName, to: toName })
-      : t("where_through", { from: fromName });
-    return t("summary_all_clear", {
+  const where = toName
+    ? t("where_to_from", { from: fromName, to: toName })
+    : t("where_through", { from: fromName });
+
+  // Sentence 1: traffic
+  const sentences = [];
+  if (tm.scheduled === 0) {
+    sentences.push(toName
+      ? t("summary_no_trains_corridor", { corridor, min: winMin })
+      : t("summary_no_traffic_station", { from: fromName, min: winMin }));
+  } else if (trafficClean) {
+    sentences.push(t("summary_all_clear", {
       min: winMin,
       scheduled: fmtNum(tm.scheduled),
       where,
-    });
-  }
-
-  const sentences = [];
-  if (tm.scheduled > 0) {
-    const where = toName
-      ? t("where_to_from", { from: fromName, to: toName })
-      : t("where_through", { from: fromName });
-    sentences.push(t("summary_trains", {
+    }));
+  } else {
+    // Degraded: base sentence + only the non-zero problems
+    const issues = [];
+    if (cancelled > 0) issues.push(t("summary_issue_cancelled", { n: fmtNum(cancelled) }));
+    if (delayed > 0) issues.push(t("summary_issue_delayed", { n: fmtNum(delayed) }));
+    let s = t("summary_trains_base", {
       min: winMin,
       realised: fmtNum(tm.realised),
       scheduled: fmtNum(tm.scheduled),
       where,
       util,
-      cancelled: fmtNum(tm.cancelled),
-      delayed: fmtNum(tm.delayed_gt_3min),
-    }));
-  } else if (toName) {
-    sentences.push(t("summary_no_trains_corridor", { corridor, min: winMin }));
-  } else {
-    sentences.push(t("summary_no_traffic_station", { from: fromName, min: winMin }));
+    });
+    if (issues.length) s += "; " + issues.join(", ");
+    sentences.push(s + ".");
   }
 
-  if (sits.length > 0) {
+  // Sentence 2: situations
+  if (sits.length === 0) {
+    // Clean traffic already implies it; only worth saying when degraded.
+    if (!trafficClean && tm.scheduled > 0) {
+      sentences.push(t("no_active_situations"));
+    }
+  } else if (trafficClean && minorOnly) {
+    // Small disturbance, trains all on plan: one short note, no figures.
+    const affLines = pax.affected_lines || [];
+    sentences.push(tp("summary_sit_minor", sits.length, {
+      count: sits.length,
+      lines: tp("lines_count", affLines.length),
+    }));
+  } else {
     const affLines = pax.affected_lines || [];
     const aff = fmtNum(pax.affected_passengers || 0);
     const disp = pax.displaced_passengers || 0;
-    const sevHigh = sits.filter((s) => s.severity === "hoy").length;
-    const sevMid = sits.filter((s) => s.severity === "middels").length;
     const sevParts = [];
     if (sevHigh) sevParts.push(t("sev_count.hoy", { n: sevHigh }));
     if (sevMid) sevParts.push(t("sev_count.middels", { n: sevMid }));
@@ -565,8 +581,6 @@ function buildSummary(d) {
       s += t("summary_sit_displaced", { n: fmtNum(disp) });
     }
     sentences.push(s + ".");
-  } else {
-    sentences.push(t("no_active_situations"));
   }
 
   return sentences.join(" ");
