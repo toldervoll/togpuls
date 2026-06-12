@@ -1031,14 +1031,16 @@ h2 {
   .big-toggle { grid-column: 1; }
   .gauge-wrap { width: 130px; height: 130px; }
 
-  /* Platform & pax tables → card stack */
+  /* Platform & pax tables → card stack: platform code left, counters in
+     a 2×2 grid beside it, line status spanning underneath */
   .plat-tbl thead { display: none; }
   .plat-tbl tbody tr {
     display: grid;
-    grid-template-columns: 3rem 1fr;
-    gap: 4px var(--space-sm);
+    grid-template-columns: 3rem 1fr 1fr;
+    gap: 6px var(--space-sm);
     padding: var(--space-sm) 0;
     border-bottom: 1px solid var(--border);
+    align-items: center;
   }
   .plat-tbl tbody tr td {
     border-bottom: none;
@@ -1046,7 +1048,7 @@ h2 {
     text-align: left;
   }
   .plat-tbl tbody tr td:first-child {
-    grid-row: 1 / span 3;
+    grid-row: 1 / span 2;
     align-self: center;
     font-family: var(--font-mono);
     font-size: 1.5rem;
@@ -1061,9 +1063,10 @@ h2 {
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--text-muted);
+    display: block;
   }
   .plat-tbl tbody tr td:last-child {
-    grid-column: 2;
+    grid-column: 2 / -1;
   }
 }
 
