@@ -52,6 +52,11 @@
   --glow-red:   0 0 20px rgba(255, 59, 92, 0.55);
   --glow-blue:  0 0 16px rgba(78, 167, 255, 0.55);
 
+  /* Bar-segment glows — off by default (light mode); dark mode restores them */
+  --seg-glow-green: none;
+  --seg-glow-amber: none;
+  --seg-glow-red:   none;
+
   /* Spacing */
   --space-xs2: 0.25rem;
   --space-xs:  0.5rem;
@@ -108,6 +113,9 @@
   --sev-ukjent: #7a7f9a;
   --shadow-sm:  0 1px 3px rgba(0, 0, 0, 0.35);
   --shadow-md:  0 3px 10px rgba(0, 0, 0, 0.45);
+  --seg-glow-green: var(--glow-green);
+  --seg-glow-amber: var(--glow-amber);
+  --seg-glow-red:   var(--glow-red);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -129,6 +137,9 @@
     --sev-ukjent: #7a7f9a;
     --shadow-sm:  0 1px 3px rgba(0, 0, 0, 0.35);
     --shadow-md:  0 3px 10px rgba(0, 0, 0, 0.45);
+    --seg-glow-green: var(--glow-green);
+    --seg-glow-amber: var(--glow-amber);
+    --seg-glow-red:   var(--glow-red);
   }
 }
 
@@ -483,12 +494,12 @@ h2 {
 .tl-bars .bar .seg-realised {
   background: var(--signal-green);
   border-radius: 2px 2px 0 0;
-  box-shadow: var(--glow-green);
+  box-shadow: var(--seg-glow-green);
 }
 .tl-bars .bar .seg-cancelled {
   background: var(--signal-red);
   border-radius: 2px 2px 0 0;
-  box-shadow: var(--glow-red);
+  box-shadow: var(--seg-glow-red);
 }
 .tl-bars .bar.empty { background: transparent; }
 
@@ -503,11 +514,11 @@ h2 {
 /* Tinted realised segment when bucket has disruptions */
 .tl-bars .bar.has-cancellations .seg-realised {
   background: var(--signal-red);
-  box-shadow: var(--glow-red);
+  box-shadow: var(--seg-glow-red);
 }
 .tl-bars .bar.has-delays .seg-realised {
   background: var(--signal-amber);
-  box-shadow: var(--glow-amber);
+  box-shadow: var(--seg-glow-amber);
 }
 
 /* Future bars: full brightness (what we care about); past: faded history */
