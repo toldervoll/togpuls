@@ -353,10 +353,10 @@ function renderTimeline(buckets) {
       stub.className = "seg seg-empty";
       bar.appendChild(stub);
     } else {
-      if (b.cancelled > 0) {
+      if (clean > 0) {
         const seg = document.createElement("div");
-        seg.className = "seg seg-cancelled";
-        seg.style.height = cancPct + "%";
+        seg.className = "seg seg-realised";
+        seg.style.height = cleanPct + "%";
         bar.appendChild(seg);
       }
       if (delayed > 0) {
@@ -365,10 +365,10 @@ function renderTimeline(buckets) {
         seg.style.height = delayedPct + "%";
         bar.appendChild(seg);
       }
-      if (clean > 0) {
+      if (b.cancelled > 0) {
         const seg = document.createElement("div");
-        seg.className = "seg seg-realised";
-        seg.style.height = cleanPct + "%";
+        seg.className = "seg seg-cancelled";
+        seg.style.height = cancPct + "%";
         bar.appendChild(seg);
       }
     }
