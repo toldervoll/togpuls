@@ -602,28 +602,49 @@ function scopeStats(tm) {
   return tm; // flat fields = combined ±window
 }
 
+function setLamp(tile, cls) {
+  if (!tile) return;
+  tile.classList.remove("lamp-green", "lamp-amber", "lamp-red");
+  if (cls) tile.classList.add(cls);
+}
+
 function renderBigCounters() {
   const tm = (lastData || {}).train_movements || {};
   const s = scopeStats(tm);
+  const isFuture = bigScope === "future";
   tickTo($("cnt-scheduled"), s.scheduled ?? 0);
   tickTo($("cnt-cancelled"), s.cancelled ?? 0);
   tickTo($("cnt-delayed"),   s.delayed_gt_3min ?? 0);
   $("cnt-p90").textContent = s.p90_delay_min == null ? "—" : s.p90_delay_min;
   // "Kjørt" is meaningless for the future scope — nothing has run yet.
-  if (bigScope === "future") {
+  if (isFuture) {
     $("cnt-realised").textContent = "—";
   } else {
     tickTo($("cnt-realised"), s.realised ?? 0);
   }
 
-  // Semantic counter colours
+  // Contextual gauges: history shows the past ring, future the forecast
+  // ring, combined both.
+  const wrapPast = $("gauge-wrap-past");
+  const wrapFut = $("gauge-wrap-future");
+  if (wrapPast) wrapPast.classList.toggle("hidden", isFuture);
+  if (wrapFut) wrapFut.classList.toggle("hidden", bigScope === "past");
+
+  // Semantic counter colours + signal lamps per tile
   const pastSched = tm.past_scheduled || 0;
   const utilPast = pastSched > 0 ? (100 * (tm.realised || 0)) / pastSched : 0;
+  const kjortGreen = !isFuture && pastSched > 0 && utilPast >= 90;
   $("cnt-cancelled").classList.toggle("neg", (s.cancelled || 0) > 0);
   $("cnt-delayed").classList.toggle("sig-amber", (s.delayed_gt_3min || 0) > 0);
-  $("cnt-realised").classList.toggle(
-    "sig-green", bigScope !== "future" && utilPast >= 90
-  );
+  $("cnt-realised").classList.toggle("sig-green", kjortGreen);
+
+  const tileOf = (id) => $(id)?.parentElement;
+  setLamp(tileOf("cnt-cancelled"), (s.cancelled || 0) > 0 ? "lamp-red" : null);
+  setLamp(tileOf("cnt-delayed"), (s.delayed_gt_3min || 0) > 0 ? "lamp-amber" : null);
+  setLamp(tileOf("cnt-p90"),
+    s.p90_delay_min != null && s.p90_delay_min > 3 ? "lamp-amber" : null);
+  setLamp(tileOf("cnt-realised"), kjortGreen ? "lamp-green" : null);
+  tileOf("cnt-realised")?.classList.toggle("na", isFuture);
 }
 
 // ── Render: main ──────────────────────────────────────────────────────

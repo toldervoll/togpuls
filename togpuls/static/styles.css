@@ -677,6 +677,12 @@ h2 {
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Re-runs whenever the ring re-enters the layout (scope switch) */
+  animation: gauge-in 0.28s ease-out backwards;
+}
+@keyframes gauge-in {
+  from { opacity: 0; transform: scale(0.86); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
 .gauge-ring {
@@ -730,11 +736,12 @@ h2 {
 /* Stat counter tiles */
 .big-counters {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
   gap: var(--space-xs);
   align-content: center;
 }
 .big-counters > div {
+  position: relative;
   background: var(--surface-2);
   border: 1px solid var(--border);
   padding: var(--space-sm) var(--space-md);
@@ -743,7 +750,35 @@ h2 {
   flex-direction: column;
   align-items: flex-start;
   gap: 3px;
+  transition: opacity 0.2s ease;
 }
+
+/* Signal lamp in each tile corner — off (border-grey) until its metric
+   has something to signal */
+.big-counters > div::after {
+  content: "";
+  position: absolute;
+  top: 9px; right: 9px;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: background 0.25s ease, box-shadow 0.25s ease;
+}
+.big-counters > div.lamp-green::after {
+  background: var(--signal-green);
+  box-shadow: var(--seg-glow-green);
+}
+.big-counters > div.lamp-amber::after {
+  background: var(--signal-amber);
+  box-shadow: var(--seg-glow-amber);
+}
+.big-counters > div.lamp-red::after {
+  background: var(--signal-red);
+  box-shadow: var(--seg-glow-red);
+}
+
+/* Not applicable in the current scope (kjørt in future view) */
+.big-counters > div.na { opacity: 0.5; }
 .num {
   font-family: var(--font-mono);
   font-size: var(--fs-stat);
