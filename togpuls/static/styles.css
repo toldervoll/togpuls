@@ -512,12 +512,12 @@ h2 {
 /* Timeline tooltip — always dark, floats above the hovered bar */
 .tl-tip {
   position: absolute;
-  bottom: calc(100% + 10px);
+  top: calc(100% + 10px);
   left: 0;
 }
-.tl-tip.below {
-  bottom: auto;
-  top: calc(100% + 10px);
+.tl-tip.above {
+  top: auto;
+  bottom: calc(100% + 10px);
 }
 .tl-tip {
   z-index: 10;

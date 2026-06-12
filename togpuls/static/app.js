@@ -470,12 +470,16 @@ function showBarTip(host, bar, b, bucketMin, isFuture) {
     tip.appendChild(list);
   }
 
-  // Position above the bar, clamped to the host; flip below when the
-  // viewport has no room above (console sits at the top of the page).
+  // Position below the bars, clamped to the host; flip above when the
+  // viewport has no room beneath.
   tip.hidden = false;
   const hostRect = host.getBoundingClientRect();
   const barRect = bar.getBoundingClientRect();
-  tip.classList.toggle("below", hostRect.top - tip.offsetHeight - 12 < 0);
+  tip.classList.toggle(
+    "above",
+    hostRect.bottom + tip.offsetHeight + 12 > window.innerHeight &&
+      hostRect.top - tip.offsetHeight - 12 >= 0
+  );
   const center = barRect.left - hostRect.left + barRect.width / 2;
   const half = tip.offsetWidth / 2;
   const left = Math.max(4, Math.min(center - half, hostRect.width - tip.offsetWidth - 4));
