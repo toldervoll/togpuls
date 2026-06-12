@@ -1,0 +1,24 @@
+# DigitalOcean App Platform app-spec for togpuls.
+# Bruk: doctl apps create --spec togpuls/deploy/app.yaml
+# eller lim inn i App Platform-UI ("Edit App Spec").
+# Husk å bytte ut <github-bruker> under.
+name: togpuls
+region: ams
+services:
+  - name: web
+    dockerfile_path: togpuls/Dockerfile
+    source_dir: /
+    github:
+      repo: <github-bruker>/togpuls
+      branch: main
+      deploy_on_push: true
+    http_port: 8000
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    health_check:
+      http_path: /api/v1/health
+      initial_delay_seconds: 5
+      period_seconds: 30
+    envs:
+      - key: TOGPULS_PORT
+        value: "8000"
