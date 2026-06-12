@@ -184,12 +184,6 @@
 
       <!-- Stat strip with gauge ring + counters -->
       <section class="big">
-        <div id="big-scope-toggle" class="seg-toggle big-toggle" role="group"
-             data-i18n-attr="aria-label:big_scope_label" aria-label="Tidsrom for statistikk">
-          <button type="button" data-scope="past" data-i18n="scope_past">Historikk</button>
-          <button type="button" data-scope="future" data-i18n="scope_future">Fremtid</button>
-          <button type="button" data-scope="combined" class="active" data-i18n="scope_combined">±90 min</button>
-        </div>
         <div class="big-stat">
           <div id="gauge-wrap-past" class="gauge-wrap">
             <svg id="gauge-past" class="gauge-ring" viewBox="0 0 120 120" role="img" aria-label="">
@@ -218,6 +212,12 @@
           <div><span id="cnt-p90" class="num">—</span><span class="cap" data-i18n="big_p90">p90-forsinkelse (min)</span></div>
           <div><span id="cnt-realised" class="num">0</span><span class="cap" data-i18n="big_realised">kjørt</span></div>
           <div><span id="cnt-scheduled" class="num">0</span><span class="cap" data-i18n="big_scheduled">planlagt</span></div>
+        </div>
+        <div id="big-scope-toggle" class="seg-toggle big-toggle" role="group"
+             data-i18n-attr="aria-label:big_scope_label" aria-label="Tidsrom for statistikk">
+          <button type="button" data-scope="past" data-i18n="scope_past">Historikk</button>
+          <button type="button" data-scope="future" data-i18n="scope_future">Fremtid</button>
+          <button type="button" data-scope="combined" class="active" data-i18n="scope_combined">±90 min</button>
         </div>
       </section>
 

@@ -641,10 +641,9 @@ h2 {
 
 /* ── Stat strip with gauge ────────────────────────────────────────────── */
 .big {
-  position: relative;
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: var(--space-lg);
+  gap: var(--space-sm) var(--space-lg);
   align-items: center;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -653,14 +652,14 @@ h2 {
   box-shadow: var(--shadow-sm);
 }
 
-/* Scope toggle pinned to the card corner, above the content */
+/* Gauges span both rows; the scope toggle sits below the tiles, flush
+   with the tile grid's right edge */
+.big .big-stat { grid-row: 1 / span 2; }
 .big-toggle {
-  position: absolute;
-  top: var(--space-sm);
-  right: var(--space-sm);
-  z-index: 1;
+  grid-column: 2;
+  justify-self: end;
   margin-top: 0;
-  align-self: auto;
+  align-self: start;
 }
 
 /* Gauge ring */
@@ -1029,6 +1028,8 @@ h2 {
     grid-template-columns: 1fr;
     gap: var(--space-md);
   }
+  .big .big-stat { grid-row: auto; }
+  .big-toggle { grid-column: 1; }
   .gauge-wrap { width: 130px; height: 130px; }
 
   /* Platform & pax tables → card stack */
