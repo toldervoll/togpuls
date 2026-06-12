@@ -474,10 +474,10 @@ h2 {
 }
 .tl-bars .bar.empty { background: transparent; }
 
-/* Past bars: full brightness; future: slightly dimmed */
-.tl-bars .bar.past .seg { opacity: 1; }
-.tl-bars .bar.future .seg { opacity: 0.55; }
-.tl-bars .bar.future:hover .seg { opacity: 1; }
+/* Future bars: full brightness (what we care about); past: faded history */
+.tl-bars .bar.future .seg { opacity: 1; }
+.tl-bars .bar.past .seg { opacity: 0.55; }
+.tl-bars .bar.past:hover .seg { opacity: 1; }
 .tl-bars .bar:hover .seg-realised { filter: brightness(1.15); }
 
 /* "Now" needle — the centrepiece marker */
