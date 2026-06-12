@@ -376,6 +376,24 @@ h2 {
   user-select: none;
   display: flex;
   align-items: center;
+  background: transparent;
+  border: 0;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.route-arrow:hover:not(:disabled) {
+  color: var(--signal-blue);
+  background: rgba(78,167,255,0.1);
+}
+.route-arrow:focus-visible {
+  outline: 2px solid var(--signal-blue);
+  outline-offset: 1px;
+}
+.route-arrow:disabled {
+  cursor: default;
+  opacity: 0.45;
 }
 
 .lang-toggle {

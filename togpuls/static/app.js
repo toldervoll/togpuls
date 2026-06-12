@@ -814,6 +814,8 @@ async function initRoutePicker() {
   toSel.value = currentTo;
   setApplyDirty(false);
 
+  const swapBtn = $("swap-btn");
+
   function updateDirty() {
     if (toSel.value && toSel.value === fromSel.value) {
       toSel.value = "";
@@ -822,9 +824,20 @@ async function initRoutePicker() {
       (fromSel.value || DEFAULT_FROM_STOP_PLACE_ID) !== currentFrom ||
       toSel.value !== currentTo;
     setApplyDirty(dirty);
+    if (swapBtn) swapBtn.disabled = !toSel.value;
   }
   fromSel.addEventListener("change", updateDirty);
   toSel.addEventListener("change", updateDirty);
+  if (swapBtn) {
+    swapBtn.disabled = !toSel.value;
+    swapBtn.addEventListener("click", () => {
+      if (!toSel.value) return;
+      const from = fromSel.value;
+      fromSel.value = toSel.value;
+      toSel.value = from;
+      updateDirty();
+    });
+  }
 
   applyBtn.addEventListener("click", () => {
     currentFrom = fromSel.value || DEFAULT_FROM_STOP_PLACE_ID;

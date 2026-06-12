@@ -137,9 +137,11 @@
             <div class="route" role="group" data-i18n-attr="aria-label:route_label" aria-label="Rute">
               <select id="from-select" class="dest-select"
                       data-i18n-attr="aria-label:from_label" aria-label="Fra"></select>
-              <span class="route-arrow" aria-hidden="true">
-                <svg class="icon"><use href="#arrow-right"/></svg>
-              </span>
+              <button id="swap-btn" class="route-arrow" type="button"
+                      data-i18n-attr="aria-label:swap_direction,title:swap_direction"
+                      aria-label="Bytt retning" title="Bytt retning">
+                <svg class="icon" aria-hidden="true"><use href="#arrow-right"/></svg>
+              </button>
               <select id="to-select" class="dest-select"
                       data-i18n-attr="aria-label:to_label" aria-label="Til">
                 <option value="" data-i18n="all_directions">Alle retninger</option>
