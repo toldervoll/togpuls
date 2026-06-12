@@ -15,8 +15,8 @@
 /* ── Signal Hall tokens ───────────────────────────────────────────────── */
 :root {
   /* Fonts */
-  --font-display: "Space Grotesk", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-display: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 
   /* Type scale */
   --fs-hero: clamp(3rem, 8vw, 5.5rem);
@@ -25,11 +25,11 @@
   --fs-body: 0.9375rem;
   --fs-small: 0.75rem;
 
-  /* Font weights */
+  /* Font weights — IBM Plex Sans tops out at 600 (SemiBold) */
   --fw-body: 400;
   --fw-med: 500;
   --fw-heading: 600;
-  --fw-bold: 700;
+  --fw-bold: 600;
 
   /* Console surface — always dark regardless of theme */
   --console-bg:    #0a0d1f;
