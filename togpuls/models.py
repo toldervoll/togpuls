@@ -1,0 +1,118 @@
+"""TypedDicts for the togpuls CLI output JSON."""
+
+from __future__ import annotations
+
+from typing import TypedDict
+
+
+class Window(TypedDict):
+    fra: str
+    til: str
+    minutter: int
+
+
+class StopPlaceInfo(TypedDict, total=False):
+    id: str
+    name: str
+    window: Window
+    to_id: str
+    to_name: str
+
+
+class Situation(TypedDict, total=False):
+    id: str
+    situation_number: str
+    summary: str
+    description: str
+    severity: str
+    severity_raw: str
+    report_type: str
+    valid_from: str
+    valid_to: str
+    paavirker_linjer: list[str]
+    paavirker_quays: list[str]
+
+
+class LineMovement(TypedDict):
+    linje: str
+    transport_mode: str
+    scheduled: int
+    realised: int
+    cancelled: int
+    delayed_gt_3min: int
+
+
+class TrainMovements(TypedDict):
+    scheduled: int
+    realised: int
+    cancelled: int
+    delayed_gt_3min: int
+    median_delay_min: float | None
+    p90_delay_min: float | None
+    by_line: list[LineMovement]
+
+
+class CapacityVsNormal(TypedDict):
+    realised_per_hour: float
+    scheduled_per_hour: float
+    kapasitetsutnyttelse: float
+    note: str
+
+
+class LinePassengers(TypedDict, total=False):
+    linje: str
+    transport_mode: str
+    scheduled_calls: int
+    realised_calls: int
+    cancelled_calls: int
+    passengers_realised: int
+    passengers_displaced: int
+    occupancy_known_realised: int
+    occupancy_unknown_realised: int
+    affected: bool
+    affecting_situations: list[str]
+
+
+class PassengerEstimate(TypedDict, total=False):
+    estimated_passengers: int
+    assumptions: dict[str, int]
+    load_factor: float
+    note: str
+    occupancy_known_realised: int
+    occupancy_unknown_realised: int
+    affected_passengers: int
+    displaced_passengers: int
+    affected_lines: list[str]
+    by_line: list[LinePassengers]
+
+
+class PlatformUsage(TypedDict, total=False):
+    quay_id: str
+    quay_name: str
+    public_code: str | None
+    scheduled: int
+    realised: int
+    cancelled: int
+    delayed: int
+    lines: list[str]
+    cancelled_lines: list[str]
+    delayed_lines: list[str]
+
+
+class TimelineBucket(TypedDict):
+    bucket_start: str
+    minutes_offset: int  # signed: negative = past, 0 = boundary, positive = future
+    is_future: bool
+    scheduled: int
+    realised: int
+    cancelled: int
+
+
+class Analysis(TypedDict, total=False):
+    stop_place: StopPlaceInfo
+    situations: list[Situation]
+    train_movements: TrainMovements
+    capacity_vs_normal: CapacityVsNormal
+    passenger_estimate: PassengerEstimate
+    platform_utilization: list[PlatformUsage]
+    timeline: list[TimelineBucket]
