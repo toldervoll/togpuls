@@ -95,8 +95,8 @@ const I18N_STRINGS = {
 
     // Platforms
     "platforms_title": "Spor",
-    "platforms_top10": "(topp 10)",
-    "platforms_topx_of_y": "(topp {x} av {y})",
+    "plat_meta_disrupted": "({n} med avvik)",
+    "plat_none_disrupted": "Ingen spor med avvik.",
     "tbl_platform": "Spor",
     "tbl_scheduled": "Planlagt",
     "tbl_realised": "Kjørt",
@@ -250,8 +250,8 @@ const I18N_STRINGS = {
     "sev_count.lav": "{n} low",
 
     "platforms_title": "Platforms",
-    "platforms_top10": "(top 10)",
-    "platforms_topx_of_y": "(top {x} of {y})",
+    "plat_meta_disrupted": "({n} disrupted)",
+    "plat_none_disrupted": "No platforms with disruptions.",
     "tbl_platform": "Platform",
     "tbl_scheduled": "Scheduled",
     "tbl_realised": "Completed",

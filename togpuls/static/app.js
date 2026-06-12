@@ -686,10 +686,17 @@ function render(d) {
   // Situations
   renderSituations(d.situations || []);
 
-  // Platforms (top 10)
+  // Platforms — exception-only: rows just for disrupted platforms
   const allPlats = d.platform_utilization || [];
-  const plats = allPlats.slice(0, 10);
-  $("plat-meta").textContent = t("platforms_topx_of_y", { x: plats.length, y: allPlats.length });
+  const plats = allPlats
+    .filter((p) => (p.cancelled || 0) > 0 || (p.delayed || 0) > 0)
+    .sort((a, b) =>
+      (b.cancelled || 0) - (a.cancelled || 0) ||
+      (b.delayed || 0) - (a.delayed || 0) ||
+      (b.scheduled || 0) - (a.scheduled || 0));
+  $("plat-meta").textContent = plats.length
+    ? t("plat_meta_disrupted", { n: plats.length })
+    : "";
   const platSummary = $("plat-summary");
   if (platSummary) {
     const totalCanc = allPlats.reduce((s, p) => s + (p.cancelled || 0), 0);
@@ -718,6 +725,10 @@ function render(d) {
     }
     platSummary.textContent = parts.join(" · ");
   }
+  const platTbl = $("plat-tbl");
+  if (platTbl) platTbl.classList.toggle("hidden", plats.length === 0);
+  const platEmpty = $("plat-empty");
+  if (platEmpty) platEmpty.classList.toggle("hidden", plats.length > 0);
   const tb = $("platforms");
   tb.innerHTML = "";
   for (const p of plats) {
