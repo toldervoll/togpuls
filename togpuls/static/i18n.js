@@ -18,7 +18,8 @@ const I18N_STRINGS = {
     "brand_name": "togpuls",
     "live": "live",
     "live_announce": "Sanntid – oppdaterer hvert 30. sekund",
-    "gauge_aria_util": "Utnyttelse {pct} prosent",
+    "gauge_aria_past": "Gjennomført {pct} prosent siste 90 min",
+    "gauge_aria_future": "Forventet {pct} prosent neste 90 min",
     "console_station_window": "Stasjon: {station} · vindu: ±90 min",
 
     // Header
@@ -60,7 +61,8 @@ const I18N_STRINGS = {
     "tt_more": "+{n} flere",
 
     // Big stats
-    "big_util": "utnyttelse",
+    "big_util_past": "gjennomført",
+    "big_util_future": "forventet",
     "big_scheduled": "planlagt",
     "big_realised": "kjørt",
     "big_cancelled": "kansellert",
@@ -139,14 +141,14 @@ const I18N_STRINGS = {
     "where_to_from": "fra {from} til {to}",
     "where_through": "gjennom {from}",
     "summary_trains_base": (
-      "I løpet av de neste {min} min forventes {realised} av {scheduled} " +
-      "planlagte tog å kjøre {where} ({util} % av plan)"
+      "Siste {min} min kjørte {realised} av {past} planlagte tog {where}; " +
+      "neste {min} min forventes {expected} av {future} å kjøre"
     ),
     "summary_issue_cancelled": "{n} kansellert",
     "summary_issue_delayed": "{n} forsinket mer enn 3 min",
     "summary_all_clear": (
-      "Alt i rute: alle {scheduled} planlagte tog forventes å kjøre " +
-      "{where} de neste {min} min."
+      "Alt i rute {where}: {past} tog kjørt som planlagt siste {min} min, " +
+      "og alle {future} planlagte forventes å kjøre de neste {min} min."
     ),
     "summary_sit_minor.one": "Én mindre situasjon påvirker {lines}.",
     "summary_sit_minor.other": "{count} mindre situasjoner påvirker {lines}.",
@@ -172,7 +174,8 @@ const I18N_STRINGS = {
     "brand_name": "togpuls",
     "live": "live",
     "live_announce": "Live — refreshing every 30 seconds",
-    "gauge_aria_util": "Utilisation {pct} percent",
+    "gauge_aria_past": "Completed {pct} percent in the last 90 min",
+    "gauge_aria_future": "Expected {pct} percent over the next 90 min",
     "console_station_window": "Station: {station} · window: ±90 min",
 
     "route_label": "Route",
@@ -211,7 +214,8 @@ const I18N_STRINGS = {
     "tt_delayed": "{n} delayed >3 min",
     "tt_more": "+{n} more",
 
-    "big_util": "utilisation",
+    "big_util_past": "completed",
+    "big_util_future": "expected",
     "big_scheduled": "scheduled",
     "big_realised": "completed",
     "big_cancelled": "cancelled",
@@ -285,14 +289,14 @@ const I18N_STRINGS = {
     "where_to_from": "from {from} to {to}",
     "where_through": "through {from}",
     "summary_trains_base": (
-      "Over the next {min} min, {realised} of {scheduled} scheduled trains " +
-      "are expected to run {where} ({util} % of plan)"
+      "In the last {min} min, {realised} of {past} scheduled trains ran {where}; " +
+      "over the next {min} min, {expected} of {future} are expected to run"
     ),
     "summary_issue_cancelled": "{n} cancelled",
     "summary_issue_delayed": "{n} delayed by more than 3 min",
     "summary_all_clear": (
-      "All on schedule: all {scheduled} trains are expected to run " +
-      "{where} over the next {min} min."
+      "All on schedule {where}: {past} trains ran as planned in the last {min} min, " +
+      "and all {future} scheduled are expected to run over the next {min} min."
     ),
     "summary_sit_minor.one": "One minor situation affects {lines}.",
     "summary_sit_minor.other": "{count} minor situations affect {lines}.",

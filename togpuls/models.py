@@ -43,10 +43,13 @@ class LineMovement(TypedDict):
 
 
 class TrainMovements(TypedDict):
-    scheduled: int
-    realised: int
-    cancelled: int
-    delayed_gt_3min: int
+    scheduled: int  # full ±window
+    realised: int  # past only — a train can only have run after its time
+    cancelled: int  # full ±window (cancellations are announced ahead)
+    delayed_gt_3min: int  # full ±window (observed or predicted)
+    past_scheduled: int
+    future_scheduled: int
+    future_cancelled: int
     median_delay_min: float | None
     p90_delay_min: float | None
     by_line: list[LineMovement]

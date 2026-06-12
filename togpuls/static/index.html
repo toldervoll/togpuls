@@ -186,13 +186,23 @@
       <section class="big">
         <div class="big-stat">
           <div class="gauge-wrap">
-            <svg id="utilisation-gauge" class="gauge-ring" viewBox="0 0 120 120" role="img" aria-label="">
+            <svg id="gauge-past" class="gauge-ring" viewBox="0 0 120 120" role="img" aria-label="">
               <circle class="gauge-track" cx="60" cy="60" r="50"/>
               <circle class="gauge-arc" cx="60" cy="60" r="50"/>
             </svg>
             <div class="gauge-inner">
-              <div id="util-pct" class="big-num">—</div>
-              <div class="big-label" data-i18n="big_util">utnyttelse</div>
+              <div id="util-pct-past" class="big-num">—</div>
+              <div class="big-label" data-i18n="big_util_past">gjennomført</div>
+            </div>
+          </div>
+          <div class="gauge-wrap">
+            <svg id="gauge-future" class="gauge-ring" viewBox="0 0 120 120" role="img" aria-label="">
+              <circle class="gauge-track" cx="60" cy="60" r="50"/>
+              <circle class="gauge-arc" cx="60" cy="60" r="50"/>
+            </svg>
+            <div class="gauge-inner">
+              <div id="util-pct-future" class="big-num">—</div>
+              <div class="big-label" data-i18n="big_util_future">forventet</div>
             </div>
           </div>
         </div>

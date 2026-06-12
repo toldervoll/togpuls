@@ -127,6 +127,9 @@ def analyse(
     total_realised = 0
     total_cancelled = 0
     total_delayed = 0
+    past_scheduled = 0
+    future_scheduled = 0
+    future_cancelled = 0
     delays: list[float] = []
 
     by_line_acc: dict[str, dict] = defaultdict(
@@ -176,6 +179,12 @@ def analyse(
             if to_stop_place_id and not _passes_through(sj, from_id, to_stop_place_id):
                 continue
 
+            # Past = aimed time has passed; only past trains can have "run".
+            try:
+                is_past = datetime.fromisoformat(aimed) <= now
+            except (ValueError, TypeError):
+                is_past = False
+
             cancelled = bool(call.get("cancellation"))
             line = sj.get("line") or {}
             line_code = line.get("publicCode") or line.get("id") or "?"
@@ -191,6 +200,10 @@ def analyse(
 
             total_scheduled += 1
             q_scheduled += 1
+            if is_past:
+                past_scheduled += 1
+            else:
+                future_scheduled += 1
             q_lines.add(line_code)
             line_bucket = by_line_acc[line_code]
             line_bucket["scheduled"] += 1
@@ -198,24 +211,16 @@ def analyse(
                 line_bucket["transport_mode"] = mode
 
             if cancelled:
+                # Cancellations are announced ahead — counted across the window.
                 total_cancelled += 1
                 q_cancelled += 1
                 q_cancelled_lines.add(line_code)
                 line_bucket["cancelled"] += 1
                 line_bucket["pax_displaced"] += displaced_pax
+                if not is_past:
+                    future_cancelled += 1
             else:
-                total_realised += 1
-                q_realised += 1
-                line_bucket["realised"] += 1
-                line_bucket["pax_realised"] += realised_pax
-                passengers_modelled += realised_pax
-                if real_lf is not None:
-                    line_bucket["occupancy_known_realised"] += 1
-                    occupancy_known_realised_total += 1
-                else:
-                    line_bucket["occupancy_unknown_realised"] += 1
-                    occupancy_unknown_realised_total += 1
-
+                # Delays are known for both halves (observed or predicted).
                 delay = _minutes_between(_call_aimed(call), _call_expected(call))
                 if delay is not None:
                     if delay > DELAY_THRESHOLD_MIN:
@@ -224,6 +229,20 @@ def analyse(
                         q_delayed += 1
                         q_delayed_lines.add(line_code)
                     delays.append(delay)
+
+                # Realised ("kjørt") only exists once the departure has passed.
+                if is_past:
+                    total_realised += 1
+                    q_realised += 1
+                    line_bucket["realised"] += 1
+                    line_bucket["pax_realised"] += realised_pax
+                    passengers_modelled += realised_pax
+                    if real_lf is not None:
+                        line_bucket["occupancy_known_realised"] += 1
+                        occupancy_known_realised_total += 1
+                    else:
+                        line_bucket["occupancy_unknown_realised"] += 1
+                        occupancy_unknown_realised_total += 1
 
             # situations attached to this call
             for sit in call.get("situations") or []:
@@ -294,21 +313,27 @@ def analyse(
         "realised": total_realised,
         "cancelled": total_cancelled,
         "delayed_gt_3min": total_delayed,
+        "past_scheduled": past_scheduled,
+        "future_scheduled": future_scheduled,
+        "future_cancelled": future_cancelled,
         "median_delay_min": median_delay,
         "p90_delay_min": p90_delay,
         "by_line": by_line,
     }
 
     horizon_hours = horizon_min / 60 if horizon_min else 1
+    look_back_hours = look_back_min / 60 if look_back_min else horizon_hours
+    window_hours = (look_back_min + horizon_min) / 60 or 1
     capacity_vs_normal: CapacityVsNormal = {
-        "realised_per_hour": round(total_realised / horizon_hours, 1),
-        "scheduled_per_hour": round(total_scheduled / horizon_hours, 1),
+        "realised_per_hour": round(total_realised / look_back_hours, 1),
+        "scheduled_per_hour": round(total_scheduled / window_hours, 1),
+        # Historic completion: how much of the past plan actually ran.
         "kapasitetsutnyttelse": (
-            round(total_realised / total_scheduled, 3) if total_scheduled else 0.0
+            round(total_realised / past_scheduled, 3) if past_scheduled else 0.0
         ),
         "note": (
-            "Compares realised vs scheduled within the window from a live "
-            "snapshot. Not a 4-week historical mean — add persistence for that."
+            "kapasitetsutnyttelse = realised / past_scheduled (observed history). "
+            "Not a 4-week historical mean — add persistence for that."
         ),
     }
 

@@ -150,25 +150,17 @@ function tickTo(el, numericTarget) {
   _tickRaf.set(el, requestAnimationFrame(step));
 }
 
-function setGauge(pct) {
-  const arc = document.querySelector(".gauge-arc");
-  const gauge = $("utilisation-gauge");
+function setGauge(svgId, pct) {
+  const gauge = $(svgId);
+  const arc = gauge ? gauge.querySelector(".gauge-arc") : null;
   if (!arc || !gauge) return;
   const clamped = Math.max(0, Math.min(100, pct || 0));
   const offset = GAUGE_CIRC * (1 - clamped / 100);
-  if (prefersReducedMotion()) {
-    arc.style.transition = "none";
-    arc.style.strokeDashoffset = offset;
-    arc.style.stroke = clamped >= 90
-      ? "var(--signal-green)" : clamped >= 70
-      ? "var(--signal-amber)" : "var(--signal-red)";
-  } else {
-    arc.style.transition = "";
-    arc.style.strokeDashoffset = offset;
-    arc.style.stroke = clamped >= 90
-      ? "var(--signal-green)" : clamped >= 70
-      ? "var(--signal-amber)" : "var(--signal-red)";
-  }
+  arc.style.transition = prefersReducedMotion() ? "none" : "";
+  arc.style.strokeDashoffset = offset;
+  arc.style.stroke = clamped >= 90
+    ? "var(--signal-green)" : clamped >= 70
+    ? "var(--signal-amber)" : "var(--signal-red)";
 }
 
 function pulseLive() {
@@ -506,7 +498,6 @@ function hideBarTip(host) {
 
 function buildSummary(d) {
   const tm = d.train_movements || {};
-  const cap = d.capacity_vs_normal || {};
   const pax = d.passenger_estimate || {};
   const sits = d.situations || [];
   const win = (d.stop_place && d.stop_place.window) || {};
@@ -514,13 +505,16 @@ function buildSummary(d) {
   const fromName = (d.stop_place && d.stop_place.name) || t("default_stop");
   const toName = d.stop_place && d.stop_place.to_name;
   const corridor = toName ? `${fromName} → ${toName}` : fromName;
-  const util = Math.round((cap.kapasitetsutnyttelse || 0) * 100);
 
   const cancelled = tm.cancelled || 0;
   const delayed = tm.delayed_gt_3min || 0;
+  const pastSched = tm.past_scheduled || 0;
+  const futSched = tm.future_scheduled || 0;
+  const futExpected = futSched - (tm.future_cancelled || 0);
+  // Clean: no cancellations or delays anywhere, and all past trains ran.
   const trafficClean =
     tm.scheduled > 0 &&
-    tm.realised === tm.scheduled &&
+    (tm.realised || 0) === pastSched &&
     cancelled === 0 &&
     delayed === 0;
   const sevHigh = sits.filter((s) => s.severity === "hoy").length;
@@ -540,7 +534,8 @@ function buildSummary(d) {
   } else if (trafficClean) {
     sentences.push(t("summary_all_clear", {
       min: winMin,
-      scheduled: fmtNum(tm.scheduled),
+      past: fmtNum(pastSched),
+      future: fmtNum(futSched),
       where,
     }));
   } else {
@@ -550,10 +545,11 @@ function buildSummary(d) {
     if (delayed > 0) issues.push(t("summary_issue_delayed", { n: fmtNum(delayed) }));
     let s = t("summary_trains_base", {
       min: winMin,
-      realised: fmtNum(tm.realised),
-      scheduled: fmtNum(tm.scheduled),
+      realised: fmtNum(tm.realised || 0),
+      past: fmtNum(pastSched),
+      expected: fmtNum(futExpected),
+      future: fmtNum(futSched),
       where,
-      util,
     });
     if (issues.length) s += "; " + issues.join(", ");
     sentences.push(s + ".");
@@ -610,14 +606,23 @@ function render(d) {
   const now = new Date().toLocaleTimeString(intlLocale(), { hour: "2-digit", minute: "2-digit" });
   $("updated").textContent = t("updated_at", { time: now });
 
-  // Big stat: gauge + counters
+  // Big stat: dual gauges (history | forecast) + counters
   const tm = d.train_movements || {};
-  const cap = d.capacity_vs_normal || {};
-  const utilPct = Math.round((cap.kapasitetsutnyttelse || 0) * 100);
-  $("util-pct").textContent = fmtPct(cap.kapasitetsutnyttelse);
-  setGauge(utilPct);
-  const gaugeEl = $("utilisation-gauge");
-  if (gaugeEl) gaugeEl.setAttribute("aria-label", t("gauge_aria_util", { pct: utilPct }));
+  const pastSched = tm.past_scheduled || 0;
+  const futSched = tm.future_scheduled || 0;
+  const futCanc = tm.future_cancelled || 0;
+  const utilPast = pastSched > 0
+    ? Math.round((100 * (tm.realised || 0)) / pastSched) : null;
+  const utilFut = futSched > 0
+    ? Math.round((100 * (futSched - futCanc)) / futSched) : null;
+  $("util-pct-past").textContent = utilPast == null ? "—" : utilPast + " %";
+  $("util-pct-future").textContent = utilFut == null ? "—" : utilFut + " %";
+  setGauge("gauge-past", utilPast ?? 0);
+  setGauge("gauge-future", utilFut ?? 0);
+  const gaugePastEl = $("gauge-past");
+  if (gaugePastEl) gaugePastEl.setAttribute("aria-label", t("gauge_aria_past", { pct: utilPast ?? 0 }));
+  const gaugeFutEl = $("gauge-future");
+  if (gaugeFutEl) gaugeFutEl.setAttribute("aria-label", t("gauge_aria_future", { pct: utilFut ?? 0 }));
 
   tickTo($("cnt-scheduled"), tm.scheduled ?? 0);
   tickTo($("cnt-realised"),  tm.realised  ?? 0);
@@ -630,7 +635,7 @@ function render(d) {
   const delayed = tm.delayed_gt_3min || 0;
   $("cnt-cancelled").classList.toggle("neg", cancelled > 0);
   $("cnt-delayed").classList.toggle("sig-amber", delayed > 0);
-  $("cnt-realised").classList.toggle("sig-green", utilPct >= 90);
+  $("cnt-realised").classList.toggle("sig-green", (utilPast ?? 0) >= 90);
 
   $("summary-text").textContent = buildSummary(d);
   renderTimeline(d.timeline || []);
@@ -924,12 +929,7 @@ function initLangToggle() {
 
 document.addEventListener("i18n:change", () => {
   updateThemeToggleLabel();
-  if (lastData) {
-    const gaugeEl = $("utilisation-gauge");
-    const utilPct = Math.round(((lastData.capacity_vs_normal || {}).kapasitetsutnyttelse || 0) * 100);
-    if (gaugeEl) gaugeEl.setAttribute("aria-label", t("gauge_aria_util", { pct: utilPct }));
-    render(lastData);
-  }
+  if (lastData) render(lastData);
 });
 
 // ── Boot ───────────────────────────────────────────────────────────────
