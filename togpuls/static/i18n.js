@@ -14,6 +14,13 @@ const I18N_STRINGS = {
     // <title>
     "title": "togpuls — Oslo S",
 
+    // Brand / live indicator
+    "brand_name": "togpuls",
+    "live": "live",
+    "live_announce": "Sanntid – oppdaterer hvert 30. sekund",
+    "gauge_aria_util": "Utnyttelse {pct} prosent",
+    "console_station_window": "Stasjon: {station} · vindu: ±90 min",
+
     // Header
     "route_label": "Rute",
     "from_label": "Fra",
@@ -149,6 +156,12 @@ const I18N_STRINGS = {
 
   en: {
     "title": "togpuls — Oslo S",
+
+    "brand_name": "togpuls",
+    "live": "live",
+    "live_announce": "Live — refreshing every 30 seconds",
+    "gauge_aria_util": "Utilisation {pct} percent",
+    "console_station_window": "Station: {station} · window: ±90 min",
 
     "route_label": "Route",
     "from_label": "From",

@@ -2,6 +2,7 @@ const POLL_MS = 30_000;
 const DEFAULT_FROM_STOP_PLACE_ID = "NSR:StopPlace:337"; // Oslo S
 const SEVERITIES = ["hoy", "middels", "lav", "ukjent"];
 const SEVERITY_RANK = { hoy: 0, middels: 1, lav: 2, ukjent: 3 };
+const GAUGE_CIRC = 2 * Math.PI * 50; // circumference for r=50
 
 function severityLabel(sev) {
   return t(`sev_label.${sev}`);
@@ -90,6 +91,10 @@ function groupSituations(sits) {
 
 const $ = (id) => document.getElementById(id);
 
+function prefersReducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 function fmtPct(x) {
   if (x === null || x === undefined || isNaN(x)) return "—";
   return Math.round(x * 100) + " %";
@@ -118,6 +123,89 @@ function fmtTime(iso) {
   }
 }
 
+// ── Motion helpers ─────────────────────────────────────────────────────
+
+const _tickRaf = new WeakMap();
+
+function tickTo(el, numericTarget) {
+  if (!el) return;
+  if (prefersReducedMotion()) {
+    el.textContent = fmtNum(numericTarget);
+    return;
+  }
+  const rawPrev = (el.textContent || "").replace(/\s/g, "").replace(/[^\d]/g, "");
+  const prev = parseInt(rawPrev, 10) || 0;
+  if (prev === numericTarget) return;
+  const start = performance.now();
+  const duration = 500;
+  if (_tickRaf.has(el)) cancelAnimationFrame(_tickRaf.get(el));
+  function step(now) {
+    const progress = Math.min((now - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - progress, 3);
+    const val = Math.round(prev + (numericTarget - prev) * ease);
+    el.textContent = fmtNum(val);
+    if (progress < 1) _tickRaf.set(el, requestAnimationFrame(step));
+    else el.textContent = fmtNum(numericTarget);
+  }
+  _tickRaf.set(el, requestAnimationFrame(step));
+}
+
+function setGauge(pct) {
+  const arc = document.querySelector(".gauge-arc");
+  const gauge = $("utilisation-gauge");
+  if (!arc || !gauge) return;
+  const clamped = Math.max(0, Math.min(100, pct || 0));
+  const offset = GAUGE_CIRC * (1 - clamped / 100);
+  if (prefersReducedMotion()) {
+    arc.style.transition = "none";
+    arc.style.strokeDashoffset = offset;
+    arc.style.stroke = clamped >= 90
+      ? "var(--signal-green)" : clamped >= 70
+      ? "var(--signal-amber)" : "var(--signal-red)";
+  } else {
+    arc.style.transition = "";
+    arc.style.strokeDashoffset = offset;
+    arc.style.stroke = clamped >= 90
+      ? "var(--signal-green)" : clamped >= 70
+      ? "var(--signal-amber)" : "var(--signal-red)";
+  }
+}
+
+function pulseLive() {
+  const dot = $("live-dot");
+  if (!dot || prefersReducedMotion()) return;
+  dot.classList.remove("pulse");
+  void dot.offsetWidth; // restart animation
+  dot.classList.add("pulse");
+}
+
+function applySeverityDiff(newData) {
+  if (!lastData) return;
+  const newSits = newData?.situations || [];
+  const oldHighTexts = new Set(
+    (lastData.situations || [])
+      .filter((s) => s.severity === "hoy")
+      .map((s) => s.summary || s.description || "")
+  );
+  const hasNew = newSits.some(
+    (s) => s.severity === "hoy" && !oldHighTexts.has(s.summary || s.description || "")
+  );
+  if (!hasNew || prefersReducedMotion()) return;
+  // DOM not yet updated; pulse after render on next tick
+  requestAnimationFrame(() => {
+    const ul = $("situations");
+    if (!ul) return;
+    for (const li of ul.querySelectorAll("li.sev-hoy")) {
+      li.classList.remove("severity-pulse");
+      void li.offsetWidth;
+      li.classList.add("severity-pulse");
+      li.addEventListener("animationend", () => li.classList.remove("severity-pulse"), { once: true });
+    }
+  });
+}
+
+// ── State helpers ──────────────────────────────────────────────────────
+
 function setStale(stale) {
   $("stale-badge").classList.toggle("hidden", !stale);
 }
@@ -131,6 +219,8 @@ function setApplyDirty(dirty) {
   const btn = $("apply-btn");
   if (btn) btn.setAttribute("data-dirty", dirty ? "true" : "false");
 }
+
+// ── Render: situations ─────────────────────────────────────────────────
 
 function renderSituations(sits) {
   lastSituations = sits;
@@ -217,24 +307,26 @@ function renderSituations(sits) {
   }
 }
 
+// ── Render: timeline ───────────────────────────────────────────────────
+
 function renderTimeline(buckets) {
   const host = $("timeline-bars");
   const meta = $("timeline-meta");
-  if (!host) return; // stale HTML — section not present
+  if (!host) return;
   host.innerHTML = "";
   if (!buckets.length) {
     if (meta) meta.textContent = t("timeline_no_data");
     return;
   }
   const max = Math.max(...buckets.map((b) => b.scheduled), 1);
-  let pastSched = 0, pastReal = 0, pastCanc = 0;
-  let futSched = 0, futReal = 0, futCanc = 0;
+  let pastSched = 0, futSched = 0, futCanc = 0;
   let nowMarkerInserted = false;
+  let barIdx = 0;
   for (const b of buckets) {
     const isFuture = b.is_future === true ||
       (b.is_future == null && (b.minutes_offset ?? 0) >= 0);
     if (isFuture) {
-      futSched += b.scheduled; futReal += b.realised; futCanc += b.cancelled;
+      futSched += b.scheduled; futCanc += b.cancelled;
       if (!nowMarkerInserted) {
         const marker = document.createElement("div");
         marker.className = "now-marker";
@@ -243,7 +335,7 @@ function renderTimeline(buckets) {
         nowMarkerInserted = true;
       }
     } else {
-      pastSched += b.scheduled; pastReal += b.realised; pastCanc += b.cancelled;
+      pastSched += b.scheduled;
     }
 
     const bar = document.createElement("div");
@@ -251,6 +343,7 @@ function renderTimeline(buckets) {
       "bar" +
       (b.scheduled === 0 ? " empty" : "") +
       (isFuture ? " future" : " past");
+    bar.style.setProperty("--i", String(barIdx++));
     const realPct = (b.realised / max) * 100;
     const cancPct = (b.cancelled / max) * 100;
     if (b.cancelled > 0) {
@@ -276,8 +369,6 @@ function renderTimeline(buckets) {
     bar.title = `${time} (${when}): ${verb}`;
     host.appendChild(bar);
   }
-  // If the response was entirely past (no future buckets), still emit the
-  // marker at the end so the user sees the "now" boundary.
   if (!nowMarkerInserted) {
     const marker = document.createElement("div");
     marker.className = "now-marker";
@@ -290,6 +381,8 @@ function renderTimeline(buckets) {
     fcancelled: futCanc,
   });
 }
+
+// ── Render: summary ────────────────────────────────────────────────────
 
 function buildSummary(d) {
   const tm = d.train_movements || {};
@@ -352,9 +445,12 @@ function buildSummary(d) {
   return sentences.join(" ");
 }
 
+// ── Render: main ──────────────────────────────────────────────────────
+
 function render(d) {
   lastData = d;
-  // Header: the route picker is now the only stop label, no h1 to update.
+
+  // Header meta
   const w = d.stop_place?.window || {};
   $("window").textContent = `${fmtTime(w.fra)}–${fmtTime(w.til)}`;
   const durEl = $("window-dur");
@@ -362,22 +458,35 @@ function render(d) {
   const now = new Date().toLocaleTimeString(intlLocale(), { hour: "2-digit", minute: "2-digit" });
   $("updated").textContent = t("updated_at", { time: now });
 
-  // Big stat
+  // Big stat: gauge + counters
   const tm = d.train_movements || {};
   const cap = d.capacity_vs_normal || {};
+  const utilPct = Math.round((cap.kapasitetsutnyttelse || 0) * 100);
   $("util-pct").textContent = fmtPct(cap.kapasitetsutnyttelse);
+  setGauge(utilPct);
+  const gaugeEl = $("utilisation-gauge");
+  if (gaugeEl) gaugeEl.setAttribute("aria-label", t("gauge_aria_util", { pct: utilPct }));
+
+  tickTo($("cnt-scheduled"), tm.scheduled ?? 0);
+  tickTo($("cnt-realised"),  tm.realised  ?? 0);
+  tickTo($("cnt-cancelled"), tm.cancelled ?? 0);
+  tickTo($("cnt-delayed"),   tm.delayed_gt_3min ?? 0);
+  $("cnt-p90").textContent = tm.p90_delay_min == null ? "—" : tm.p90_delay_min;
+
+  // Semantic counter colours
+  const cancelled = tm.cancelled || 0;
+  const delayed = tm.delayed_gt_3min || 0;
+  $("cnt-cancelled").classList.toggle("neg", cancelled > 0);
+  $("cnt-delayed").classList.toggle("sig-amber", delayed > 0);
+  $("cnt-realised").classList.toggle("sig-green", utilPct >= 90);
+
   $("summary-text").textContent = buildSummary(d);
   renderTimeline(d.timeline || []);
-  $("cnt-scheduled").textContent = fmtNum(tm.scheduled);
-  $("cnt-realised").textContent = fmtNum(tm.realised);
-  $("cnt-cancelled").textContent = fmtNum(tm.cancelled);
-  $("cnt-delayed").textContent = fmtNum(tm.delayed_gt_3min);
-  $("cnt-p90").textContent = tm.p90_delay_min == null ? "—" : tm.p90_delay_min;
 
   // Situations
   renderSituations(d.situations || []);
 
-  // Spor (topp 10)
+  // Platforms (top 10)
   const allPlats = d.platform_utilization || [];
   const plats = allPlats.slice(0, 10);
   $("plat-meta").textContent = t("platforms_topx_of_y", { x: plats.length, y: allPlats.length });
@@ -423,10 +532,20 @@ function render(d) {
       `<td class="lines"></td>`;
     tr.children[0].textContent = code;
     tr.children[5].textContent = formatLineStatus(p.cancelled_lines, p.delayed_lines);
+    // data-label for mobile card layout
+    tr.children[0].dataset.label = t("tbl_platform");
+    tr.children[1].dataset.label = t("tbl_scheduled");
+    tr.children[2].dataset.label = t("tbl_realised");
+    tr.children[3].dataset.label = t("tbl_cancelled");
+    tr.children[4].dataset.label = t("tbl_delayed");
+    tr.children[5].dataset.label = t("tbl_lines");
+    // Semantic chip colours
+    if ((p.cancelled || 0) > 0) tr.children[3].classList.add("chip-red");
+    if ((p.delayed || 0) > 0)   tr.children[4].classList.add("chip-amber");
     tb.appendChild(tr);
   }
 
-  // Passenger box
+  // Passenger estimate
   const pax = d.passenger_estimate || {};
   $("pax-headline-main").textContent = t("pax_main", { n: fmtNum(pax.estimated_passengers) });
   $("pax-note").textContent = t("pax_note");
@@ -478,12 +597,19 @@ function render(d) {
       tr.children[2].textContent = fmtNum(r.cancelled_calls);
       tr.children[3].textContent = fmtNum(r.passengers_displaced);
       tr.children[4].textContent = (r.affecting_situations || []).length;
+      tr.children[0].dataset.label = t("pax_tbl_line");
+      tr.children[1].dataset.label = t("pax_tbl_passengers");
+      tr.children[2].dataset.label = t("pax_tbl_cancelled");
+      tr.children[3].dataset.label = t("pax_tbl_displaced");
+      tr.children[4].dataset.label = t("pax_tbl_situations");
       paxTbody.appendChild(tr);
     }
   } else {
     paxTbl.classList.add("hidden");
   }
 }
+
+// ── Data fetching ──────────────────────────────────────────────────────
 
 async function refresh() {
   if (refreshTimer) {
@@ -495,7 +621,9 @@ async function refresh() {
     const r = await fetch(apiUrl(), { cache: "no-store" });
     if (!r.ok) throw new Error("HTTP " + r.status);
     const d = await r.json();
+    applySeverityDiff(d);
     render(d);
+    pulseLive();
     setStale(false);
   } catch (e) {
     setStale(true);
@@ -505,6 +633,8 @@ async function refresh() {
     refreshTimer = setTimeout(refresh, POLL_MS);
   }
 }
+
+// ── Route picker ───────────────────────────────────────────────────────
 
 async function initRoutePicker() {
   const fromSel = $("from-select");
@@ -536,7 +666,6 @@ async function initRoutePicker() {
     toSel.appendChild(toOpt);
   }
 
-  // If saved FROM isn't in the list, fall back to default.
   if (![...fromSel.options].some((o) => o.value === currentFrom)) {
     currentFrom = DEFAULT_FROM_STOP_PLACE_ID;
   }
@@ -545,7 +674,6 @@ async function initRoutePicker() {
   setApplyDirty(false);
 
   function updateDirty() {
-    // Picking the same station for both makes no sense — clear TO.
     if (toSel.value && toSel.value === fromSel.value) {
       toSel.value = "";
     }
@@ -570,6 +698,8 @@ async function initRoutePicker() {
   });
 }
 
+// ── Theme toggle ───────────────────────────────────────────────────────
+
 function currentTheme() {
   const explicit = document.documentElement.getAttribute("data-theme");
   if (explicit === "light" || explicit === "dark") return explicit;
@@ -577,16 +707,13 @@ function currentTheme() {
 }
 
 function updateThemeToggleLabel() {
-  const icon = $("theme-toggle-icon");
   const btn = $("theme-toggle");
-  if (!icon) return;
+  if (!btn) return;
   const theme = currentTheme();
-  icon.textContent = theme === "dark" ? "☀" : "☾";
-  if (btn) {
-    const label = theme === "dark" ? t("theme_to_light") : t("theme_to_dark");
-    btn.setAttribute("aria-label", label);
-    btn.setAttribute("title", label);
-  }
+  const label = theme === "dark" ? t("theme_to_light") : t("theme_to_dark");
+  btn.setAttribute("aria-label", label);
+  btn.setAttribute("title", label);
+  // Icons are toggled via CSS based on data-theme on <html>
 }
 
 function initThemeToggle() {
@@ -599,7 +726,6 @@ function initThemeToggle() {
     try { localStorage.setItem("togpuls-theme", next); } catch (e) {}
     updateThemeToggleLabel();
   });
-  // Track system changes when no explicit choice has been saved.
   try {
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
       const saved = localStorage.getItem("togpuls-theme");
@@ -608,13 +734,14 @@ function initThemeToggle() {
   } catch (e) {}
 }
 
+// ── Situation view toggle ──────────────────────────────────────────────
+
 function initSituationToggle() {
   const root = document.getElementById("sit-view-toggle");
   if (!root) return;
   root.addEventListener("click", (e) => {
     const btn = e.target.closest("button[data-view]");
     if (!btn) return;
-    // Prevent the parent <details> from toggling open/closed.
     e.preventDefault();
     e.stopPropagation();
     if (btn.dataset.view === situationView) return;
@@ -626,6 +753,8 @@ function initSituationToggle() {
   });
 }
 
+// ── Lang toggle ────────────────────────────────────────────────────────
+
 function initLangToggle() {
   const btn = $("lang-toggle");
   if (!btn) return;
@@ -634,18 +763,25 @@ function initLangToggle() {
   });
 }
 
-// Re-render dynamic content when the language changes.
+// ── i18n:change re-render ──────────────────────────────────────────────
+
 document.addEventListener("i18n:change", () => {
   updateThemeToggleLabel();
-  if (lastData) render(lastData);
+  if (lastData) {
+    const gaugeEl = $("utilisation-gauge");
+    const utilPct = Math.round(((lastData.capacity_vs_normal || {}).kapasitetsutnyttelse || 0) * 100);
+    if (gaugeEl) gaugeEl.setAttribute("aria-label", t("gauge_aria_util", { pct: utilPct }));
+    render(lastData);
+  }
 });
+
+// ── Boot ───────────────────────────────────────────────────────────────
 
 initThemeToggle();
 initLangToggle();
 initSituationToggle();
 initRoutePicker().then(refresh);
 
-// Register the service worker so the page is installable and works offline.
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch((err) => {
