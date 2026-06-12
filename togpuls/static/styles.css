@@ -200,10 +200,10 @@ h2 {
   /* No top/bottom padding — console flush at top, footer has its own */
 }
 
-/* ── Console (dark hero surface — same in both themes) ────────────────── */
+/* ── Console (top section, adapts to current theme) ──────────────────── */
 .console {
-  background: var(--console-bg);
-  /* Break out of page's implicit margins for a full-bleed panel effect */
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
 }
 
 /* On screens smaller than max-width, #app has implicit body margin.
@@ -237,7 +237,7 @@ h2 {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--console-text);
+  color: var(--text);
 }
 .brand-icon {
   width: 1.25rem; height: 1.25rem;
@@ -248,7 +248,7 @@ h2 {
   font-size: 1.0625rem;
   font-weight: var(--fw-bold);
   letter-spacing: 0.01em;
-  color: var(--console-text);
+  color: var(--text);
 }
 
 /* Meta row: live dot, window, updated, badges */
@@ -259,17 +259,17 @@ h2 {
   gap: var(--space-xs);
   font-family: var(--font-mono);
   font-size: 0.75rem;
-  color: var(--console-muted);
+  color: var(--text-muted);
 }
 #window {
   font-size: 0.8125rem;
   font-weight: var(--fw-med);
-  color: var(--console-text);
+  color: var(--text);
   font-variant-numeric: tabular-nums;
 }
-#window-dur { color: var(--console-muted); }
-#updated { color: var(--console-muted); }
-.dot { color: var(--console-edge-2); }
+#window-dur { color: var(--text-muted); }
+#updated { color: var(--text-muted); }
+.dot { color: var(--border); }
 
 /* Live indicator */
 .live-dot {
@@ -316,17 +316,17 @@ h2 {
   gap: 6px;
 }
 
-/* Shared control base for console surface */
+/* Shared control base */
 .dest-select,
 .apply-btn,
 .lang-toggle,
 .theme-toggle {
   height: var(--ctrl-h);
   box-sizing: border-box;
-  border: 1px solid var(--console-edge-2);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--console-text);
+  background: var(--surface-2);
+  color: var(--text);
   font-family: var(--font-display);
   font-size: 0.8125rem;
   font-weight: var(--fw-med);
@@ -338,7 +338,7 @@ h2 {
   -webkit-appearance: none;
   appearance: none;
   padding-right: 28px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b71a0'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235a5d6b'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 10px center;
 }
@@ -347,7 +347,7 @@ h2 {
 .lang-toggle:hover,
 .theme-toggle:hover {
   border-color: var(--signal-blue);
-  background: rgba(78,167,255,0.07);
+  background: rgba(78,167,255,0.08);
 }
 .dest-select:focus-visible,
 .apply-btn:focus-visible,
@@ -357,12 +357,12 @@ h2 {
   outline-offset: 1px;
 }
 .dest-select option {
-  background: var(--console-bg);
-  color: var(--console-text);
+  background: var(--surface);
+  color: var(--text);
 }
 
 .apply-btn {
-  color: var(--console-muted);
+  color: var(--text-muted);
   font-weight: var(--fw-heading);
 }
 .apply-btn[data-dirty="true"] {
@@ -376,7 +376,7 @@ h2 {
 }
 
 .route-arrow {
-  color: var(--console-muted);
+  color: var(--text-muted);
   font-size: 1.125rem;
   line-height: 1;
   user-select: none;
@@ -391,7 +391,7 @@ h2 {
   font-size: 0.75rem;
   font-weight: var(--fw-bold);
   letter-spacing: 0.06em;
-  color: var(--console-muted);
+  color: var(--text-muted);
   padding: 0 10px;
 }
 .lang-toggle .icon { width: 0.9em; height: 0.9em; }
@@ -439,13 +439,13 @@ h2 {
   background:
     repeating-linear-gradient(
       to bottom,
-      rgba(255,255,255,0.025) 0px,
-      rgba(255,255,255,0.025) 1px,
+      rgba(0,0,0,0.04) 0px,
+      rgba(0,0,0,0.04) 1px,
       transparent 1px,
       transparent 24px
     ),
-    linear-gradient(180deg, transparent 0%, rgba(78,167,255,0.04) 55%, transparent 100%),
-    var(--console-bg-2);
+    linear-gradient(180deg, transparent 0%, rgba(78,167,255,0.06) 55%, transparent 100%),
+    var(--surface-2);
   border-radius: var(--radius-md);
   overflow: visible;
 }
@@ -521,7 +521,7 @@ h2 {
   justify-content: space-between;
   margin-top: 6px;
   font-family: var(--font-mono);
-  color: var(--console-muted);
+  color: var(--text-muted);
   padding: 0 4px;
 }
 .tl-foot {
@@ -529,7 +529,7 @@ h2 {
   justify-content: space-between;
   margin-top: 4px;
   font-family: var(--font-mono);
-  color: var(--console-muted);
+  color: var(--text-muted);
   font-size: var(--fs-small);
   padding: 0 4px;
   flex-wrap: wrap;
