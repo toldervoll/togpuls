@@ -466,7 +466,7 @@ function showBarTip(host, bar, b, bucketMin, isFuture) {
       row.append(line, dest, time);
       if (!d.cancelled && d.delay_min > 0) {
         const delay = document.createElement("span");
-        delay.className = "tl-tip-delay";
+        delay.className = d.delay_min > 3 ? "tl-tip-delay" : "tl-tip-delay-minor";
         delay.textContent = `+${d.delay_min} min`;
         row.appendChild(delay);
       }
