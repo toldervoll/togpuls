@@ -970,6 +970,7 @@ h2 {
   display: inline-flex;
   align-items: center;
   align-self: start;
+  justify-self: start;
   gap: 4px;
   margin-top: 1px;
   padding: 1px 8px;
