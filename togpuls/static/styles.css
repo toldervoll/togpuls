@@ -935,6 +935,24 @@ h2 {
 .sit-body  { display: grid; gap: 3px; }
 .sit-text  { color: var(--text); font-size: 0.875rem; line-height: 1.4; }
 .sit-lines { color: var(--text-muted); font-size: var(--fs-small); }
+.sit-estimate {
+  display: inline-flex;
+  align-items: center;
+  align-self: start;
+  gap: 4px;
+  margin-top: 1px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.6875rem;
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.sit-estimate::before { content: "⏱"; font-weight: normal; }
+.sit-estimate.overdue { color: var(--sev-hoy); border-color: var(--sev-hoy); }
 .sit-count-badge {
   background: var(--surface-3);
   color: var(--accent);
