@@ -17,7 +17,10 @@ import json
 import sys
 from datetime import datetime
 
-from togpuls.analysis import analyse
+import httpx
+
+from togpuls.analysis import analyse, collect_situation_ids
+from togpuls.clients.disruptions import fetch_estimates
 from togpuls.clients.journey_planner import query_stop_place_departures
 from togpuls.models import Analysis
 
@@ -54,11 +57,15 @@ async def run(
             "Check the ID (Oslo S is NSR:StopPlace:337)."
         )
 
+    async with httpx.AsyncClient() as client:
+        estimates = await fetch_estimates(collect_situation_ids(response), client)
+
     return analyse(
         response,
         now=now,
         horizon_min=horizon_min,
         to_stop_place_id=to_stop_place_id,
+        estimates=estimates,
     )
 
 
