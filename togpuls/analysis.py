@@ -485,6 +485,7 @@ def analyse(
             "valid_to": entry["valid_to"],
             "paavirker_linjer": lines,
             "paavirker_quays": quay_ids,
+            "estimate": entry["estimate"],
         }
         situations.append(sit_out)
     severity_rank = {"hoy": 0, "middels": 1, "lav": 2, "ukjent": 3}
