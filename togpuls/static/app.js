@@ -157,6 +157,77 @@ function applyEstimate(li, est) {
   if (tip) el.title = tip;
 }
 
+// ── Alert metrics (estimate.alert) ──────────────────────────────────────
+// The estimate service returns an `alert` block with a risk tier and two
+// base rates. The tier replaces the SIRI severity word in the left chip;
+// the rates become small LED meters left of the text.
+const LED_SEGMENTS = 5;
+const LED_HTML = "<i></i>".repeat(LED_SEGMENTS);
+// Display scale: a rate at/above this lights the whole meter. Exact value is
+// always in the tooltip — the LEDs are a glanceable relative indicator.
+const CANCEL_RATE_FULL = 0.1; // 10% cancellations
+const TROUBLE_RATE_FULL = 0.3; // 30% trouble
+const TIER_SEV = { low: "lav", medium: "middels", high: "hoy" };
+
+function fmtRate(x) {
+  if (typeof x !== "number" || isNaN(x)) return "—";
+  return new Intl.NumberFormat(intlLocale(), {
+    style: "percent",
+    maximumFractionDigits: 1,
+  }).format(x);
+}
+
+// Light the first N LED segments proportional to rate/full; remove the meter
+// entirely when the rate is missing.
+function renderRateMeter(el, rate, full, kind) {
+  if (!el) return;
+  if (typeof rate !== "number" || isNaN(rate)) {
+    el.remove();
+    return;
+  }
+  const lit = rate > 0
+    ? Math.min(LED_SEGMENTS, Math.max(1, Math.ceil((rate / full) * LED_SEGMENTS)))
+    : 0;
+  el.querySelectorAll(".leds i").forEach((seg, i) => seg.classList.toggle("on", i < lit));
+  const label = t(kind === "cancel" ? "rate_cancel" : "rate_trouble", { pct: fmtRate(rate) });
+  el.title = label;
+  el.setAttribute("aria-label", label);
+}
+
+// Set the left chip (tier when available, else SIRI severity) and the two
+// rate meters for a rendered situation <li>.
+function applyAlert(li, sev, est) {
+  const alert = est && typeof est === "object" ? est.alert : null;
+  const tierRaw = alert && typeof alert.alert_tier === "string"
+    ? alert.alert_tier.toLowerCase()
+    : null;
+  const tier = tierRaw && TIER_SEV[tierRaw] ? tierRaw : null;
+
+  const sevEl = li.querySelector(".sit-sev");
+  if (sevEl) {
+    if (tier) {
+      sevEl.textContent = t(`tier_label.${tier}`);
+      sevEl.className = `sit-sev tier-${tier}`;
+      li.classList.add(`tier-${tier}`);
+    } else {
+      sevEl.textContent = severityLabel(sev);
+      sevEl.className = `sit-sev sev-${sev}`;
+    }
+  }
+
+  const meters = li.querySelector(".sit-meters");
+  if (!meters) return;
+  const hasCancel = alert && typeof alert.cancel_rate === "number";
+  const hasTrouble = alert && typeof alert.trouble_rate === "number";
+  if (!hasCancel && !hasTrouble) {
+    meters.remove();
+    return;
+  }
+  li.querySelector(".sit-body")?.classList.add("has-meters");
+  renderRateMeter(meters.querySelector(".meter-cancel"), hasCancel ? alert.cancel_rate : null, CANCEL_RATE_FULL, "cancel");
+  renderRateMeter(meters.querySelector(".meter-trouble"), hasTrouble ? alert.trouble_rate : null, TROUBLE_RATE_FULL, "trouble");
+}
+
 function renderLineStatus(cell, cancelledLines, delayedLines) {
   cell.replaceChildren();
   const c = cancelledLines || [];
@@ -334,16 +405,22 @@ function renderSituations(sits) {
       li.className = `sev-${sev}`;
       const countBadge = r.texts.length > 1 ? `<span class="sit-count-badge">×${r.texts.length}</span>` : "";
       li.innerHTML = `
-        <span class="sit-sev sev-${sev}"></span>
+        <span class="sit-sev"></span>
         <div class="sit-body">
-          <div class="sit-text"></div>
-          <div class="sit-lines"></div>
-          <div class="sit-estimate"></div>
+          <div class="sit-meters">
+            <span class="rate-meter meter-cancel" role="img"><svg class="rate-ico" aria-hidden="true"><use href="#x-mark"/></svg><span class="leds" aria-hidden="true">${LED_HTML}</span></span>
+            <span class="rate-meter meter-trouble" role="img"><svg class="rate-ico" aria-hidden="true"><use href="#clock"/></svg><span class="leds" aria-hidden="true">${LED_HTML}</span></span>
+          </div>
+          <div class="sit-content">
+            <div class="sit-text"></div>
+            <div class="sit-lines"></div>
+            <div class="sit-estimate"></div>
+          </div>
         </div>
         ${countBadge}`;
-      li.querySelector(".sit-sev").textContent = severityLabel(sev);
       li.querySelector(".sit-text").textContent = r.line;
       li.querySelector(".sit-lines").textContent = r.texts.join(" · ");
+      applyAlert(li, sev, r.estimate);
       applyEstimate(li, r.estimate);
       ul.appendChild(li);
     }
@@ -355,16 +432,22 @@ function renderSituations(sits) {
       const lines = g.lines.join(", ");
       const countBadge = g.count > 1 ? `<span class="sit-count-badge">×${g.count}</span>` : "";
       li.innerHTML = `
-        <span class="sit-sev sev-${sev}"></span>
+        <span class="sit-sev"></span>
         <div class="sit-body">
-          <div class="sit-text"></div>
-          <div class="sit-lines"></div>
-          <div class="sit-estimate"></div>
+          <div class="sit-meters">
+            <span class="rate-meter meter-cancel" role="img"><svg class="rate-ico" aria-hidden="true"><use href="#x-mark"/></svg><span class="leds" aria-hidden="true">${LED_HTML}</span></span>
+            <span class="rate-meter meter-trouble" role="img"><svg class="rate-ico" aria-hidden="true"><use href="#clock"/></svg><span class="leds" aria-hidden="true">${LED_HTML}</span></span>
+          </div>
+          <div class="sit-content">
+            <div class="sit-text"></div>
+            <div class="sit-lines"></div>
+            <div class="sit-estimate"></div>
+          </div>
         </div>
         ${countBadge}`;
-      li.querySelector(".sit-sev").textContent = severityLabel(sev);
       li.querySelector(".sit-text").textContent = g.text;
       li.querySelector(".sit-lines").textContent = lines ? t("sit_lines_prefix", { lines }) : "";
+      applyAlert(li, sev, g.estimate);
       applyEstimate(li, g.estimate);
       ul.appendChild(li);
     }

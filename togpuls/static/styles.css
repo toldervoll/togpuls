@@ -931,8 +931,39 @@ h2 {
 .sit-sev.sev-hoy     { color: var(--sev-hoy); }
 .sit-sev.sev-middels { color: var(--sev-middels); }
 .sit-sev.sev-lav     { color: var(--sev-lav); }
+/* Alert tier reuses the severity palette in the left chip + border */
+.sit-sev.tier-low    { color: var(--sev-lav); }
+.sit-sev.tier-medium { color: var(--sev-middels); }
+.sit-sev.tier-high   { color: var(--sev-hoy); }
+.sit-list li.tier-low    { border-left-color: var(--sev-lav); }
+.sit-list li.tier-medium { border-left-color: var(--sev-middels); }
+.sit-list li.tier-high   { border-left-color: var(--sev-hoy); }
 
 .sit-body  { display: grid; gap: 3px; }
+.sit-body.has-meters {
+  grid-template-columns: auto 1fr;
+  gap: var(--space-sm);
+  align-items: start;
+}
+.sit-content { display: grid; gap: 3px; min-width: 0; }
+
+/* LED rate meters (cancel_rate / trouble_rate) */
+.sit-meters { display: grid; gap: 5px; align-content: start; padding-top: 1px; }
+.rate-meter { display: inline-flex; align-items: center; gap: 5px; }
+.rate-ico { width: 13px; height: 13px; flex-shrink: 0; }
+.meter-cancel  .rate-ico { color: var(--signal-red); }
+.meter-trouble .rate-ico { color: var(--signal-amber); }
+.leds { display: inline-flex; gap: 2px; }
+.leds i {
+  display: block;
+  width: 5px; height: 11px;
+  border-radius: 1px;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+}
+.meter-cancel  .leds i.on { background: var(--signal-red);   border-color: var(--signal-red); }
+.meter-trouble .leds i.on { background: var(--signal-amber); border-color: var(--signal-amber); }
+
 .sit-text  { color: var(--text); font-size: 0.875rem; line-height: 1.4; }
 .sit-lines { color: var(--text-muted); font-size: var(--fs-small); }
 .sit-estimate {
