@@ -996,6 +996,12 @@ h2 {
   font-size: 0.75rem;
   line-height: 1.45;
 }
+.sit-hist-scope {
+  color: var(--console-text-2, var(--text-muted));
+  font-size: 0.6875rem;
+  margin-bottom: 6px;
+  white-space: nowrap;
+}
 .sit-hist-grid {
   display: grid;
   grid-template-columns: auto auto;

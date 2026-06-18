@@ -178,10 +178,30 @@ function applyHistory(li, est) {
 
   if (!rows.length) return;
 
+  // Build scope header from grain/matched_* fields.
+  // matched_category comes pre-translated from KIX; skip if UNKNOWN.
+  // matched_line "*" means all lines. matched_hour -1 means no hour match.
+  const scopeParts = [];
+  if (alert) {
+    const cat = alert.matched_category;
+    if (cat && cat !== "UNKNOWN" && cat !== "*") scopeParts.push(cat);
+    const line = alert.matched_line;
+    if (line && line !== "*") scopeParts.push(line);
+    else scopeParts.push(t("sit_hist_all_lines"));
+    const hour = alert.matched_hour;
+    if (typeof hour === "number" && hour >= 0) scopeParts.push(t("sit_hist_hour", { h: hour }));
+  }
+
   const tip = document.createElement("div");
   tip.className = "sit-hist-tip";
   tip.setAttribute("role", "tooltip");
   tip.hidden = true;
+  if (scopeParts.length) {
+    const scope = document.createElement("div");
+    scope.className = "sit-hist-scope";
+    scope.textContent = scopeParts.join(" · ");
+    tip.appendChild(scope);
+  }
   const grid = document.createElement("div");
   grid.className = "sit-hist-grid";
   for (const [key, val] of rows) {
