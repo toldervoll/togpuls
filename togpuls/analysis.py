@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import statistics
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -52,6 +53,22 @@ def _delay_percentiles(delays: list[float]) -> tuple[float | None, float | None]
     s = sorted(delays)
     p90_idx = max(0, int(len(s) * 0.9) - 1)
     return round(statistics.median(s), 2), round(s[p90_idx], 2)
+
+
+# Cause clause in a SIRI description: "… skyldes en signalfeil." /
+# "… på grunn av problemer med toget." / "… grunnet en teknisk feil."
+_CAUSE_RX = re.compile(
+    r"(?:skyldes|på grunn av|pga\.?|grunnet)\s+(?:at\s+)?(.+?)(?:[.\n]|$)",
+    re.IGNORECASE,
+)
+
+
+def _extract_cause(description: str) -> str:
+    """Pull a short cause phrase out of a SIRI description, or "" if none."""
+    if not description:
+        return ""
+    m = _CAUSE_RX.search(description)
+    return m.group(1).strip() if m else ""
 
 
 def _first_text(field) -> str:
@@ -481,6 +498,8 @@ def analyse(
     for key, entry in sit_acc.items():
         lines = sorted(entry.pop("_lines"))
         quay_ids = sorted(entry.pop("_quays"))
+        est = entry["estimate"]
+        cause_code = est.get("category") if isinstance(est, dict) else None
         sit_out: Situation = {
             "id": entry["id"],
             "situation_number": entry["situation_number"],
@@ -494,6 +513,11 @@ def analyse(
             "paavirker_linjer": lines,
             "paavirker_quays": quay_ids,
             "estimate": entry["estimate"],
+            # KIX cause code (e.g. "infrastruktur/signal"); falls back to a cause
+            # phrase pulled from the description so the UI can show it widely.
+            "cause_code": cause_code or "",
+            "cause_text": _extract_cause(entry["description"])
+            or _extract_cause(entry["summary"]),
         }
         situations.append(sit_out)
     severity_rank = {"hoy": 0, "middels": 1, "lav": 2, "ukjent": 3}

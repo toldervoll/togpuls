@@ -36,6 +36,10 @@ class Situation(TypedDict, total=False):
     # (assigned in api/app.py). Several SX messages — e.g. a cancellation and
     # its "take the next train" advice — share one event_id.
     event_id: str
+    # Cause from KIX (category code, e.g. "infrastruktur/signal") and a fallback
+    # cause phrase extracted from the SIRI description. Frontend renders a label.
+    cause_code: str
+    cause_text: str
 
 
 class LineMovement(TypedDict):

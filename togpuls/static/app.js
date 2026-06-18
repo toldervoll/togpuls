@@ -8,6 +8,23 @@ function severityLabel(sev) {
   return t(`sev_label.${sev}`);
 }
 
+// Render the KIX cause: a known category code → friendly label, an unknown
+// code → prettified ("infrastruktur/signal" → "Infrastruktur · signal"), else
+// the cause phrase pulled from the description. Returns "" when unknown.
+function resolveCause(code, text) {
+  if (code) {
+    const key = `cause_label.${code}`;
+    const label = t(key);
+    if (label !== key) return label;
+    return code
+      .split("/")
+      .map((p) => (p ? p[0].toUpperCase() + p.slice(1) : p))
+      .join(" · ");
+  }
+  if (text) return text[0].toUpperCase() + text.slice(1);
+  return "";
+}
+
 let situationView = "grouped"; // or "per-line"
 let bigScope = "combined"; // "past" | "future" | "combined"
 let lastSituations = [];
@@ -34,7 +51,8 @@ function buildPerLineSituations(sits) {
     for (const line of s.paavirker_linjer || []) {
       let e = byLine.get(line);
       if (!e) {
-        e = { line, severity: s.severity || "ukjent", texts: new Set(), estimate: null };
+        e = { line, severity: s.severity || "ukjent", texts: new Set(), estimate: null,
+              cause_code: "", cause_text: "" };
         byLine.set(line, e);
       }
       e.texts.add(text);
@@ -42,6 +60,7 @@ function buildPerLineSituations(sits) {
       const cur = SEVERITY_RANK[e.severity] ?? 99;
       const inc = SEVERITY_RANK[s.severity] ?? 99;
       if (inc < cur) e.severity = s.severity;
+      if (!e.cause_code && !e.cause_text) { e.cause_code = s.cause_code || ""; e.cause_text = s.cause_text || ""; }
     }
   }
   return Array.from(byLine.values())
@@ -83,6 +102,8 @@ function groupSituations(sits) {
         texts: new Set(),
         count: 0,
         estimate: null,
+        cause_code: "",
+        cause_text: "",
         rank: 99,
       };
       groups.set(key, g);
@@ -91,16 +112,19 @@ function groupSituations(sits) {
     if (text) g.texts.add(text);
     for (const l of s.paavirker_linjer || []) g.lines.add(l);
     for (const q of s.paavirker_quays || []) g.quays.add(q);
-    // The worst member represents the event: its text, severity and estimate.
+    // The worst member represents the event: its text, severity, estimate, cause.
     const r = effSevRank(s);
     if (r < g.rank) {
       g.rank = r;
       g.text = text;
       g.severity = s.severity || "ukjent";
       if (s.estimate != null) g.estimate = s.estimate;
+      g.cause_code = s.cause_code || "";
+      g.cause_text = s.cause_text || "";
     } else if (g.estimate == null && s.estimate != null) {
       g.estimate = s.estimate;
     }
+    if (!g.cause_code && !g.cause_text) { g.cause_code = s.cause_code || ""; g.cause_text = s.cause_text || ""; }
   }
   return Array.from(groups.values())
     .map((g) => ({
@@ -172,7 +196,7 @@ function applyEstimate(li, est) {
 // Attach a hover tooltip to .sit-estimate showing historical profile rows
 // from estimate.alert + estimate.reopen/impact. No-ops when the estimate
 // only has the two rates already visible as LED meters (fallback path).
-function applyHistory(li, est) {
+function applyHistory(li, est, lines, cause) {
   const chip = li.querySelector(".sit-estimate");
   if (!chip) return;
   const alert = est && typeof est === "object" ? est.alert : null;
@@ -198,32 +222,23 @@ function applyHistory(li, est) {
     ["sit_hist_impact_spread",  spread(impact)],
   ].filter(([, v]) => v !== null);
 
-  if (!rows.length) return;
-
-  // Build scope header from grain/matched_* fields.
-  // matched_category comes pre-translated from KIX; skip if UNKNOWN.
-  // matched_line "*" means all lines. matched_hour -1 means no hour match.
-  const scopeParts = [];
-  if (alert) {
-    const cat = alert.matched_category;
-    if (cat && cat !== "UNKNOWN" && cat !== "*") scopeParts.push(cat);
-    const line = alert.matched_line;
-    if (line && line !== "*") scopeParts.push(line);
-    else scopeParts.push(t("sit_hist_all_lines"));
-    const hour = alert.matched_hour;
-    if (typeof hour === "number" && hour >= 0) scopeParts.push(t("sit_hist_hour", { h: hour }));
+  // The historical match hour as a plain field (matched_hour -1 = none).
+  if (alert && typeof alert.matched_hour === "number" && alert.matched_hour >= 0) {
+    rows.push(["sit_hist_hour_label", t("sit_hist_hour", { h: alert.matched_hour })]);
   }
+
+  // Cause and lines as labelled fields at the top, formatted like every other
+  // row (bold label + value).
+  const lineList = (lines || []).filter(Boolean);
+  if (lineList.length) rows.unshift(["sit_hist_lines", lineList.join(", ")]);
+  if (cause) rows.unshift(["sit_hist_cause", cause]);
+
+  if (!rows.length) return;
 
   const tip = document.createElement("div");
   tip.className = "sit-hist-tip";
   tip.setAttribute("role", "tooltip");
   tip.hidden = true;
-  if (scopeParts.length) {
-    const scope = document.createElement("div");
-    scope.className = "sit-hist-scope";
-    scope.textContent = scopeParts.join(" · ");
-    tip.appendChild(scope);
-  }
   const grid = document.createElement("div");
   grid.className = "sit-hist-grid";
   for (const [key, val] of rows) {
@@ -510,6 +525,7 @@ function renderSituations(sits) {
             <div class="sit-text"></div>
             <div class="sit-meta">
               <div class="sit-estimate"></div>
+              <span class="sit-cause"></span>
             </div>
             <div class="sit-lines"></div>
           </div>
@@ -517,9 +533,12 @@ function renderSituations(sits) {
         ${countBadge}`;
       li.querySelector(".sit-text").textContent = r.line;
       li.querySelector(".sit-lines").textContent = r.texts.join(" · ");
+      const rCause = resolveCause(r.cause_code, r.cause_text);
+      const rCauseEl = li.querySelector(".sit-cause");
+      if (rCause) rCauseEl.textContent = rCause; else rCauseEl.remove();
       applyAlert(li, sev, r.estimate);
       applyEstimate(li, r.estimate);
-      applyHistory(li, r.estimate);
+      applyHistory(li, r.estimate, [r.line], rCause);
       ul.appendChild(li);
     }
   } else {
@@ -540,6 +559,7 @@ function renderSituations(sits) {
             <div class="sit-text"></div>
             <div class="sit-meta">
               <div class="sit-estimate"></div>
+              <span class="sit-cause"></span>
             </div>
             <div class="sit-members"></div>
             <div class="sit-lines"></div>
@@ -552,9 +572,12 @@ function renderSituations(sits) {
         ? t("sit_also_prefix", { texts: others.join(" · ") })
         : "";
       li.querySelector(".sit-lines").textContent = lines ? t("sit_lines_prefix", { lines }) : "";
+      const gCause = resolveCause(g.cause_code, g.cause_text);
+      const gCauseEl = li.querySelector(".sit-cause");
+      if (gCause) gCauseEl.textContent = gCause; else gCauseEl.remove();
       applyAlert(li, sev, g.estimate);
       applyEstimate(li, g.estimate);
-      applyHistory(li, g.estimate);
+      applyHistory(li, g.estimate, g.lines, gCause);
       ul.appendChild(li);
     }
   }
@@ -910,6 +933,17 @@ function buildSummary(d) {
       s += t("summary_sit_displaced", { n: fmtNum(disp) });
     }
     sentences.push(s + ".");
+  }
+
+  // Cause sentence: only when the active events share a single known cause, so
+  // we never imply one cause for a mix of unrelated situations.
+  if (groupCount > 0) {
+    const causes = new Set(
+      sitGroups.map((g) => resolveCause(g.cause_code, g.cause_text)).filter(Boolean)
+    );
+    if (causes.size === 1) {
+      sentences.push(t("summary_cause", { cause: [...causes][0] }));
+    }
   }
 
   return sentences.join(" ");

@@ -979,6 +979,21 @@ h2 {
 }
 .sit-estimate::before { content: "⏱"; font-weight: normal; }
 .sit-estimate.overdue { color: var(--sev-hoy); border-color: var(--sev-hoy); }
+.sit-cause {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.6875rem;
+  font-weight: var(--fw-bold);
+  white-space: nowrap;
+}
+.sit-cause::before { content: "⚠"; font-weight: normal; }
+.sit-cause:empty { display: none; }
 .sit-meta {
   display: flex;
   align-items: baseline;
@@ -1000,12 +1015,6 @@ h2 {
   pointer-events: none;
   font-size: 0.75rem;
   line-height: 1.45;
-}
-.sit-hist-scope {
-  color: var(--console-text-2, var(--text-muted));
-  font-size: 0.6875rem;
-  margin-bottom: 6px;
-  white-space: nowrap;
 }
 .sit-hist-grid {
   display: grid;
