@@ -268,19 +268,23 @@ class TogpulsBar(rumps.App):
 
     @staticmethod
     def _situation_text(s):
-        """Én linje: situasjon · årsak (berørte linjer).
+        """Én linje: (berørte linjer) situasjon · årsak.
 
         Årsak er cause_text når den finnes, ellers cause_code-kategorien."""
-        text = (s.get("summary") or "").strip()[:44]
-        cause = (s.get("cause_text") or "").strip() or (s.get("cause_code") or "").strip()
-        if cause:
-            text += f" · {cause[:40]}"
+        parts = []
         linjer = s.get("paavirker_linjer") or []
         if linjer:
             shown = ", ".join(linjer[:4])
             if len(linjer) > 4:
                 shown += f" +{len(linjer) - 4}"
-            text += f" ({shown})"
+            parts.append(f"({shown})")
+        summary = (s.get("summary") or "").strip()[:44]
+        if summary:
+            parts.append(summary)
+        text = " ".join(parts)
+        cause = (s.get("cause_text") or "").strip() or (s.get("cause_code") or "").strip()
+        if cause:
+            text += f" · {cause[:40]}"
         return text
 
     @staticmethod
