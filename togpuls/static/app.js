@@ -34,10 +34,11 @@ function buildPerLineSituations(sits) {
     for (const line of s.paavirker_linjer || []) {
       let e = byLine.get(line);
       if (!e) {
-        e = { line, severity: s.severity || "ukjent", texts: new Set() };
+        e = { line, severity: s.severity || "ukjent", texts: new Set(), estimate: null };
         byLine.set(line, e);
       }
       e.texts.add(text);
+      if (e.estimate == null && s.estimate != null) e.estimate = s.estimate;
       const cur = SEVERITY_RANK[e.severity] ?? 99;
       const inc = SEVERITY_RANK[s.severity] ?? 99;
       if (inc < cur) e.severity = s.severity;
@@ -66,10 +67,12 @@ function groupSituations(sits) {
         lines: new Set(),
         quays: new Set(),
         count: 0,
+        estimate: null,
       };
       groups.set(key, g);
     }
     g.count += 1;
+    if (g.estimate == null && s.estimate != null) g.estimate = s.estimate;
     for (const l of s.paavirker_linjer || []) g.lines.add(l);
     for (const q of s.paavirker_quays || []) g.quays.add(q);
     const cur = SEVERITY_RANK[g.severity] ?? 99;
@@ -104,6 +107,125 @@ function fmtPct(x) {
 function fmtNum(x) {
   if (x === null || x === undefined) return "—";
   return new Intl.NumberFormat(intlLocale()).format(x);
+}
+
+function fmtDurationMin(mins) {
+  const m = Math.max(0, Math.round(mins));
+  if (m < 60) return t("dur_min", { n: m });
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  return r ? t("dur_hm", { h, m: r }) : t("dur_h", { h });
+}
+
+// The disruption-estimate service returns an `impact` block predicting when
+// the situation clears: point_min_from_now plus a p50/p80/p90 spread and an
+// `overdue` flag. Render the point estimate as a short ETA; tolerate a missing
+// or differently-shaped payload by returning "" (nothing shown).
+function formatEstimate(est) {
+  const impact = est && typeof est === "object" ? est.impact : null;
+  if (!impact || typeof impact !== "object") return "";
+  if (impact.overdue === true) return t("sit_est_overdue");
+  const mins = typeof impact.point_min_from_now === "number"
+    ? impact.point_min_from_now
+    : (typeof impact.p50_min_from_now === "number" ? impact.p50_min_from_now : null);
+  if (mins === null || mins <= 0) return "";
+  return t("sit_est_eta", { dur: fmtDurationMin(mins) });
+}
+
+function estimateTooltip(est) {
+  const impact = est && typeof est === "object" ? est.impact : null;
+  if (!impact) return "";
+  const parts = [];
+  if (typeof impact.p50_min_from_now === "number") parts.push("p50 " + fmtDurationMin(impact.p50_min_from_now));
+  if (typeof impact.p90_min_from_now === "number") parts.push("p90 " + fmtDurationMin(impact.p90_min_from_now));
+  return parts.length ? t("sit_est_tooltip", { spread: parts.join(" · ") }) : "";
+}
+
+// Fill the .sit-estimate node in a rendered <li>, or remove it when there is
+// no usable estimate.
+function applyEstimate(li, est) {
+  const el = li.querySelector(".sit-estimate");
+  if (!el) return;
+  const txt = formatEstimate(est);
+  if (!txt) {
+    el.remove();
+    return;
+  }
+  el.textContent = txt;
+  if (est && est.impact && est.impact.overdue === true) el.classList.add("overdue");
+  const tip = estimateTooltip(est);
+  if (tip) el.title = tip;
+}
+
+// ── Alert metrics (estimate.alert) ──────────────────────────────────────
+// The estimate service returns an `alert` block with a risk tier and two
+// base rates. The tier replaces the SIRI severity word in the left chip;
+// the rates become small LED meters left of the text.
+const LED_SEGMENTS = 5;
+const LED_HTML = "<i></i>".repeat(LED_SEGMENTS);
+// Display scale: a rate at/above this lights the whole meter. Exact value is
+// always in the tooltip — the LEDs are a glanceable relative indicator.
+const CANCEL_RATE_FULL = 0.1; // 10% cancellations
+const TROUBLE_RATE_FULL = 0.3; // 30% trouble
+const TIER_SEV = { low: "lav", medium: "middels", high: "hoy" };
+
+function fmtRate(x) {
+  if (typeof x !== "number" || isNaN(x)) return "—";
+  return new Intl.NumberFormat(intlLocale(), {
+    style: "percent",
+    maximumFractionDigits: 1,
+  }).format(x);
+}
+
+// Light the first N LED segments proportional to rate/full; remove the meter
+// entirely when the rate is missing.
+function renderRateMeter(el, rate, full, kind) {
+  if (!el) return;
+  if (typeof rate !== "number" || isNaN(rate)) {
+    el.remove();
+    return;
+  }
+  const lit = rate > 0
+    ? Math.min(LED_SEGMENTS, Math.max(1, Math.ceil((rate / full) * LED_SEGMENTS)))
+    : 0;
+  el.querySelectorAll(".leds i").forEach((seg, i) => seg.classList.toggle("on", i < lit));
+  const label = t(kind === "cancel" ? "rate_cancel" : "rate_trouble", { pct: fmtRate(rate) });
+  el.title = label;
+  el.setAttribute("aria-label", label);
+}
+
+// Set the left chip (tier when available, else SIRI severity) and the two
+// rate meters for a rendered situation <li>.
+function applyAlert(li, sev, est) {
+  const alert = est && typeof est === "object" ? est.alert : null;
+  const tierRaw = alert && typeof alert.alert_tier === "string"
+    ? alert.alert_tier.toLowerCase()
+    : null;
+  const tier = tierRaw && TIER_SEV[tierRaw] ? tierRaw : null;
+
+  const sevEl = li.querySelector(".sit-sev");
+  if (sevEl) {
+    if (tier) {
+      sevEl.textContent = t(`tier_label.${tier}`);
+      sevEl.className = `sit-sev tier-${tier}`;
+      li.classList.add(`tier-${tier}`);
+    } else {
+      sevEl.textContent = severityLabel(sev);
+      sevEl.className = `sit-sev sev-${sev}`;
+    }
+  }
+
+  const meters = li.querySelector(".sit-meters");
+  if (!meters) return;
+  const hasCancel = alert && typeof alert.cancel_rate === "number";
+  const hasTrouble = alert && typeof alert.trouble_rate === "number";
+  if (!hasCancel && !hasTrouble) {
+    meters.remove();
+    return;
+  }
+  li.querySelector(".sit-body")?.classList.add("has-meters");
+  renderRateMeter(meters.querySelector(".meter-cancel"), hasCancel ? alert.cancel_rate : null, CANCEL_RATE_FULL, "cancel");
+  renderRateMeter(meters.querySelector(".meter-trouble"), hasTrouble ? alert.trouble_rate : null, TROUBLE_RATE_FULL, "trouble");
 }
 
 function renderLineStatus(cell, cancelledLines, delayedLines) {
@@ -283,15 +405,23 @@ function renderSituations(sits) {
       li.className = `sev-${sev}`;
       const countBadge = r.texts.length > 1 ? `<span class="sit-count-badge">×${r.texts.length}</span>` : "";
       li.innerHTML = `
-        <span class="sit-sev sev-${sev}"></span>
+        <span class="sit-sev"></span>
         <div class="sit-body">
-          <div class="sit-text"></div>
-          <div class="sit-lines"></div>
+          <div class="sit-meters">
+            <span class="rate-meter meter-cancel" role="img"><svg class="rate-ico" aria-hidden="true"><use href="#x-mark"/></svg><span class="leds" aria-hidden="true">${LED_HTML}</span></span>
+            <span class="rate-meter meter-trouble" role="img"><svg class="rate-ico" aria-hidden="true"><use href="#clock"/></svg><span class="leds" aria-hidden="true">${LED_HTML}</span></span>
+          </div>
+          <div class="sit-content">
+            <div class="sit-text"></div>
+            <div class="sit-lines"></div>
+            <div class="sit-estimate"></div>
+          </div>
         </div>
         ${countBadge}`;
-      li.querySelector(".sit-sev").textContent = severityLabel(sev);
       li.querySelector(".sit-text").textContent = r.line;
       li.querySelector(".sit-lines").textContent = r.texts.join(" · ");
+      applyAlert(li, sev, r.estimate);
+      applyEstimate(li, r.estimate);
       ul.appendChild(li);
     }
   } else {
@@ -302,15 +432,23 @@ function renderSituations(sits) {
       const lines = g.lines.join(", ");
       const countBadge = g.count > 1 ? `<span class="sit-count-badge">×${g.count}</span>` : "";
       li.innerHTML = `
-        <span class="sit-sev sev-${sev}"></span>
+        <span class="sit-sev"></span>
         <div class="sit-body">
-          <div class="sit-text"></div>
-          <div class="sit-lines"></div>
+          <div class="sit-meters">
+            <span class="rate-meter meter-cancel" role="img"><svg class="rate-ico" aria-hidden="true"><use href="#x-mark"/></svg><span class="leds" aria-hidden="true">${LED_HTML}</span></span>
+            <span class="rate-meter meter-trouble" role="img"><svg class="rate-ico" aria-hidden="true"><use href="#clock"/></svg><span class="leds" aria-hidden="true">${LED_HTML}</span></span>
+          </div>
+          <div class="sit-content">
+            <div class="sit-text"></div>
+            <div class="sit-lines"></div>
+            <div class="sit-estimate"></div>
+          </div>
         </div>
         ${countBadge}`;
-      li.querySelector(".sit-sev").textContent = severityLabel(sev);
       li.querySelector(".sit-text").textContent = g.text;
       li.querySelector(".sit-lines").textContent = lines ? t("sit_lines_prefix", { lines }) : "";
+      applyAlert(li, sev, g.estimate);
+      applyEstimate(li, g.estimate);
       ul.appendChild(li);
     }
   }

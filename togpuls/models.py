@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TypedDict
+from typing import Any, TypedDict
 
 
 class Window(TypedDict):
@@ -31,6 +31,7 @@ class Situation(TypedDict, total=False):
     valid_to: str
     paavirker_linjer: list[str]
     paavirker_quays: list[str]
+    estimate: Any
 
 
 class LineMovement(TypedDict):

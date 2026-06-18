@@ -66,6 +66,25 @@ def _first_text(field) -> str:
     return ""
 
 
+def collect_situation_ids(response: dict) -> set[str]:
+    """All SIRI situation keys in a stopPlace response.
+
+    Keyed the same way the accumulator in `analyse()` keys them
+    (`situationNumber`, falling back to `id`) so estimates fetched up front
+    line up with the entries built later. Used by callers to fetch disruption
+    estimates concurrently before `analyse()` runs.
+    """
+    ids: set[str] = set()
+    quays = (response.get("stopPlace") or {}).get("quays") or []
+    for quay in quays:
+        for call in quay.get("estimatedCalls") or []:
+            for sit in call.get("situations") or []:
+                key = sit.get("situationNumber") or sit.get("id")
+                if key:
+                    ids.add(key)
+    return ids
+
+
 def _call_aimed(call: dict) -> str | None:
     return call.get("aimedDepartureTime") or call.get("aimedArrivalTime")
 
@@ -113,7 +132,9 @@ def analyse(
     to_name: str | None = None,
     past_response: dict | None = None,
     look_back_min: int = 0,
+    estimates: dict[str, object] | None = None,
 ) -> Analysis:
+    estimates = estimates or {}
     stop_place = response.get("stopPlace") or {}
     quays = stop_place.get("quays") or []
     from_id = stop_place.get("id", "")
@@ -284,6 +305,7 @@ def analyse(
                         "report_type": sit.get("reportType", "") or "",
                         "valid_from": validity.get("startTime", "") or "",
                         "valid_to": validity.get("endTime", "") or "",
+                        "estimate": estimates.get(key),
                         "_lines": set(),
                         "_quays": set(),
                     }
@@ -463,6 +485,7 @@ def analyse(
             "valid_to": entry["valid_to"],
             "paavirker_linjer": lines,
             "paavirker_quays": quay_ids,
+            "estimate": entry["estimate"],
         }
         situations.append(sit_out)
     severity_rank = {"hoy": 0, "middels": 1, "lav": 2, "ukjent": 3}
