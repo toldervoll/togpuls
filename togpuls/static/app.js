@@ -437,8 +437,14 @@ function renderSituations(sits) {
     if (groups.length === 0) {
       sitSummary.textContent = t("no_active_situations");
     } else {
-      const sevHigh = groups.filter((g) => g.severity === "hoy").length;
-      const sevMid = groups.filter((g) => g.severity === "middels").length;
+      const riskTier = (g) => {
+        const tier = g.estimate?.alert?.alert_tier?.toLowerCase();
+        if (tier === "high") return "hoy";
+        if (tier === "medium") return "middels";
+        return g.severity;
+      };
+      const sevHigh = groups.filter((g) => riskTier(g) === "hoy").length;
+      const sevMid = groups.filter((g) => riskTier(g) === "middels").length;
       const sevLow = groups.length - sevHigh - sevMid;
       const sevParts = [];
       if (sevHigh) sevParts.push(t("sev_count.hoy", { n: sevHigh }));
