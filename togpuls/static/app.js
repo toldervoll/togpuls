@@ -132,14 +132,6 @@ function formatEstimate(est) {
   return t("sit_est_eta", { dur: fmtDurationMin(mins) });
 }
 
-function estimateTooltip(est) {
-  const impact = est && typeof est === "object" ? est.impact : null;
-  if (!impact) return "";
-  const parts = [];
-  if (typeof impact.p50_min_from_now === "number") parts.push("p50 " + fmtDurationMin(impact.p50_min_from_now));
-  if (typeof impact.p90_min_from_now === "number") parts.push("p90 " + fmtDurationMin(impact.p90_min_from_now));
-  return parts.length ? t("sit_est_tooltip", { spread: parts.join(" · ") }) : "";
-}
 
 // Fill the .sit-estimate node in a rendered <li>, or remove it when there is
 // no usable estimate.
@@ -153,8 +145,6 @@ function applyEstimate(li, est) {
   }
   el.textContent = txt;
   if (est && est.impact && est.impact.overdue === true) el.classList.add("overdue");
-  const tip = estimateTooltip(est);
-  if (tip) el.title = tip;
 }
 
 // Attach a hover tooltip to .sit-estimate showing historical profile rows
