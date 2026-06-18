@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Togpuls menylinje-app for macOS.
 
-Viser sanntidsstatus for togavganger fra Togpuls-API-et i menylinjen, og
-en nedtrekksmeny med detaljer. Poller hvert 30. sekund — samme rytme som
-selve dashbordet.
+Viser neste togavganger, avvik og situasjoner fra Togpuls-API-et i
+menylinjen. Støtter både én stasjon (alle avganger) og en korridor
+(fra → til). Poller hvert 30. sekund — samme rytme som dashbordet.
 
-Konfigurasjon via miljøvariabler:
+Konfigurasjon via miljøvariabler (alle valgfrie):
     TOGPULS_BASE_URL   standard https://togpuls.kengu.no
-    TOGPULS_STOP_PLACE standard NSR:StopPlace:337 (Oslo S)
+    TOGPULS_STOP_PLACE standard NSR:StopPlace:337 (Oslo S) — «fra»
+    TOGPULS_TO_PLACE   standard tom (= alle avganger); sett for korridor
     TOGPULS_HORIZON    standard 60 (minutter framover)
     TOGPULS_POLL_SEC   standard 30
 """
@@ -22,12 +23,14 @@ from datetime import datetime
 import rumps
 
 BASE_URL = os.environ.get("TOGPULS_BASE_URL", "https://togpuls.kengu.no").rstrip("/")
-STOP_PLACE = os.environ.get("TOGPULS_STOP_PLACE", "NSR:StopPlace:337")
+FROM_PLACE = os.environ.get("TOGPULS_STOP_PLACE", "NSR:StopPlace:337")
+TO_PLACE = os.environ.get("TOGPULS_TO_PLACE", "") or None
 HORIZON_MIN = int(os.environ.get("TOGPULS_HORIZON", "60"))
 POLL_SEC = int(os.environ.get("TOGPULS_POLL_SEC", "30"))
 
 TIER_DOT = {"high": "🔴", "medium": "🟡", "low": "🟢"}
 TIER_RANK = {"high": 3, "medium": 2, "low": 1}
+ALL_LABEL = "Alle avganger"
 
 # Zero-width space — gjør ellers like menytitler unike så rumps ikke slår dem sammen.
 ZWS = "​"
@@ -36,9 +39,12 @@ ZWS = "​"
 class TogpulsBar(rumps.App):
     def __init__(self):
         super().__init__("🚆 …", quit_button=None)
-        self.stop_place = STOP_PLACE
-        self.station_name = "Oslo S"
+        self.from_id = FROM_PLACE
+        self.from_name = "Oslo S"
+        self.to_id = TO_PLACE
+        self.to_name = None
         self.stations = self._load_stations()
+        self._name_lookup()
         self.timer = rumps.Timer(self.refresh, POLL_SEC)
         self.timer.start()
         self.refresh(None)
@@ -56,29 +62,59 @@ class TogpulsBar(rumps.App):
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return json.load(resp)
 
-    # ---- stasjoner -----------------------------------------------------
-
     def _load_stations(self):
         try:
             return self._get("/api/v1/stations", timeout=10)
         except Exception:
             return []
 
-    def _station_submenu(self):
-        sub = rumps.MenuItem("Stasjon")
+    def _name_lookup(self):
+        """Sett lesbare navn fra stasjonslista hvis vi bare har id-er."""
+        by_id = {s.get("id"): s.get("name") for s in self.stations}
+        self.from_name = by_id.get(self.from_id, self.from_name)
+        if self.to_id:
+            self.to_name = by_id.get(self.to_id, self.to_id)
+
+    # ---- meny: fra / til -----------------------------------------------
+
+    def _from_submenu(self):
+        sub = rumps.MenuItem(f"Fra: {self.from_name}")
         for st in self.stations:
             sid, name = st.get("id"), st.get("name")
             if not sid:
                 continue
-            item = rumps.MenuItem(name, callback=self._make_station_cb(sid, name))
-            item.state = 1 if sid == self.stop_place else 0
+            item = rumps.MenuItem(name, callback=self._set_from(sid, name))
+            item.state = 1 if sid == self.from_id else 0
             sub.add(item)
         return sub
 
-    def _make_station_cb(self, sid, name):
+    def _to_submenu(self):
+        label = self.to_name or ALL_LABEL
+        sub = rumps.MenuItem(f"Til: {label}")
+        alle = rumps.MenuItem(ALL_LABEL, callback=self._set_to(None, None))
+        alle.state = 1 if not self.to_id else 0
+        sub.add(alle)
+        for st in self.stations:
+            sid, name = st.get("id"), st.get("name")
+            if not sid or sid == self.from_id:
+                continue
+            item = rumps.MenuItem(name, callback=self._set_to(sid, name))
+            item.state = 1 if sid == self.to_id else 0
+            sub.add(item)
+        return sub
+
+    def _set_from(self, sid, name):
         def cb(_):
-            self.stop_place = sid
-            self.station_name = name
+            self.from_id, self.from_name = sid, name
+            if self.to_id == sid:  # fra == til gir ikke mening
+                self.to_id, self.to_name = None, None
+            self.refresh(None)
+
+        return cb
+
+    def _set_to(self, sid, name):
+        def cb(_):
+            self.to_id, self.to_name = sid, name
             self.refresh(None)
 
         return cb
@@ -89,7 +125,11 @@ class TogpulsBar(rumps.App):
     # ---- datahenting + rendering --------------------------------------
 
     def refresh(self, _):
-        path = f"/api/v1/analysis/{urllib.parse.quote(self.stop_place)}"
+        frm = urllib.parse.quote(self.from_id)
+        if self.to_id:
+            path = f"/api/v1/analysis/{frm}/to/{urllib.parse.quote(self.to_id)}"
+        else:
+            path = f"/api/v1/analysis/{frm}"
         try:
             data = self._get(path, params={"horizon_min": HORIZON_MIN})
             status_lines = self._status_lines(data)
@@ -106,12 +146,12 @@ class TogpulsBar(rumps.App):
     def _rebuild_menu(self, status_lines):
         items = []
         for i, text in enumerate(status_lines):
-            # Unik nøkkel via usynlige tegn; tom streng blir et mellomrom.
             items.append(rumps.MenuItem((text or " ") + ZWS * i))
         items += [
             None,
             rumps.MenuItem("Åpne dashbord", callback=self.open_dashboard),
-            self._station_submenu(),
+            self._from_submenu(),
+            self._to_submenu(),
             rumps.MenuItem("Oppdater nå", callback=self.refresh),
             None,
             rumps.MenuItem("Avslutt", callback=rumps.quit_application),
@@ -122,62 +162,106 @@ class TogpulsBar(rumps.App):
     def _status_lines(self, d):
         tm = d.get("train_movements", {}) or {}
         sits = d.get("situations", []) or []
-        pe = d.get("passenger_estimate", {}) or {}
         sp = d.get("stop_place", {}) or {}
 
-        worst = self._worst_tier(sits)
+        deps = self._next_departures(d)
         cancelled = tm.get("cancelled", 0)
         delayed = tm.get("delayed_gt_3min", 0)
-        self.title = f"{TIER_DOT.get(worst, '🟢')} {cancelled}✖ {delayed}⏱"
+        worst = self._worst_tier(sits)
 
-        name = sp.get("name", self.station_name)
+        # Tittel: neste avgang + status, med risikoprikk fra situasjonsbildet.
+        dot = TIER_DOT.get(worst, "🟢")
+        if deps:
+            nxt = deps[0]
+            self.title = f"{dot} {nxt['line']} {self._hhmm(nxt)}{self._mark(nxt)}"
+        else:
+            self.title = f"{dot} 🚆 –"
+
+        # Header
         win = (sp.get("window") or {}).get("minutter", HORIZON_MIN)
-        lines = [f"{name} · neste {win} min", ""]
+        if sp.get("to_name"):
+            head = f"{sp.get('name', self.from_name)} → {sp['to_name']}"
+        else:
+            head = f"{sp.get('name', self.from_name)} · alle avganger"
+        lines = [f"{head} · neste {win} min", ""]
 
-        lines.append(f"Avganger: {tm.get('realised', 0)}/{tm.get('scheduled', 0)} kjørt")
-        lines.append(f"Innstilt: {cancelled}   ·   Forsinket >3 min: {delayed}")
-        p50, p90 = tm.get("median_delay_min"), tm.get("p90_delay_min")
-        if p50 is not None:
-            lines.append(f"Forsinkelse median {p50} min · p90 {p90} min")
-
-        by_line = tm.get("by_line", []) or []
-        ranked = sorted(
-            by_line,
-            key=lambda l: l.get("cancelled", 0) * 2 + l.get("delayed_gt_3min", 0),
-            reverse=True,
-        )
-        hot = [l for l in ranked if l.get("cancelled") or l.get("delayed_gt_3min")][:5]
-        if hot:
-            lines.append("")
-            lines.append("Mest berørte linjer:")
-            for l in hot:
+        # Neste avganger
+        lines.append("Neste avganger")
+        if deps:
+            for dep in deps[:6]:
+                dest = (dep.get("destination") or "")[:16]
                 lines.append(
-                    f"   {str(l.get('linje', '?')):<5} "
-                    f"{l.get('cancelled', 0)}✖ {l.get('delayed_gt_3min', 0)}⏱"
+                    f"   {self._hhmm(dep)} {dep['line']} → {dest}{self._status(dep)}"
                 )
+        else:
+            lines.append("   ingen i tidsvinduet")
 
-        high = [s for s in sits if self._tier(s) == "high"]
+        # Avvik (oppsummert)
         lines.append("")
-        lines.append(f"Situasjoner: {len(sits)} ({len(high)} høy risiko)")
-        for s in high[:4]:
-            lines.append(f"   🔴 {(s.get('summary') or '').strip()[:48]}")
+        lines.append(f"Avvik: {cancelled} innstilt · {delayed} forsinket >3 min")
 
-        affected = pe.get("affected_passengers")
-        if affected:
-            displaced = pe.get("displaced_passengers", 0)
-            alines = ", ".join(pe.get("affected_lines", []) or [])
-            lines.append("")
-            lines.append(f"Berørte reisende: ~{affected:,}".replace(",", " "))
-            if displaced:
-                lines.append(f"   kan ikke reise: ~{displaced:,}".replace(",", " "))
-            if alines:
-                lines.append(f"   linjer: {alines}")
+        # Situasjoner — prioriter høy risiko
+        ranked = sorted(sits, key=lambda s: TIER_RANK.get(self._tier(s), 0), reverse=True)
+        high = sum(1 for s in sits if self._tier(s) == "high")
+        lines.append("")
+        lines.append(f"Situasjoner: {len(sits)} ({high} høy risiko)")
+        for s in ranked[:5]:
+            tier = self._tier(s)
+            mark = TIER_DOT.get(tier, "▪︎")
+            lines.append(f"   {mark} {(s.get('summary') or '').strip()[:46]}")
 
         lines.append("")
         lines.append(f"Sist oppdatert {datetime.now():%H:%M:%S}")
         return lines
 
-    # ---- hjelpere ------------------------------------------------------
+    # ---- avganger ------------------------------------------------------
+
+    def _next_departures(self, d):
+        """Alle departures fra tidslinjen, kommende først, sortert på tid."""
+        now = datetime.now().astimezone()
+        deps = []
+        for bucket in d.get("timeline", []) or []:
+            for dep in bucket.get("departures") or []:
+                when = self._parse(dep.get("aimed"))
+                if when is None or when < now:
+                    continue
+                dep["_when"] = when
+                deps.append(dep)
+        deps.sort(key=lambda x: x["_when"])
+        return deps
+
+    @staticmethod
+    def _parse(iso):
+        if not iso:
+            return None
+        try:
+            return datetime.fromisoformat(iso)
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _hhmm(dep):
+        w = dep.get("_when")
+        return f"{w:%H:%M}" if w else "--:--"
+
+    @staticmethod
+    def _mark(dep):
+        if dep.get("cancelled"):
+            return " ✖"
+        if (dep.get("delay_min") or 0) >= 3:
+            return f" +{dep['delay_min']}"
+        return ""
+
+    @staticmethod
+    def _status(dep):
+        if dep.get("cancelled"):
+            return "  · INNSTILT"
+        delay = dep.get("delay_min") or 0
+        if delay >= 1:
+            return f"  · +{delay} min"
+        return ""
+
+    # ---- situasjoner ---------------------------------------------------
 
     @staticmethod
     def _tier(situation):
@@ -193,15 +277,21 @@ class TogpulsBar(rumps.App):
 
 
 def _selftest():
-    """Henter live-data og skriver statuslinjene til stdout. Brukes til å
-    verifisere at den buntede appen når API-et. Aktiveres med TOGPULS_SELFTEST=1."""
+    """Henter live-data og skriver statuslinjene til stdout. Aktiveres med
+    TOGPULS_SELFTEST=1 — brukes til å verifisere at appen når API-et."""
     app = TogpulsBar.__new__(TogpulsBar)
-    app.station_name = "Oslo S"
+    app.from_id, app.from_name = FROM_PLACE, "Oslo S"
+    app.to_id, app.to_name = TO_PLACE, None
     app.title = ""
-    path = "/api/v1/analysis/" + urllib.parse.quote(STOP_PLACE)
+    frm = urllib.parse.quote(app.from_id)
+    if app.to_id:
+        path = f"/api/v1/analysis/{frm}/to/{urllib.parse.quote(app.to_id)}"
+    else:
+        path = f"/api/v1/analysis/{frm}"
     data = app._get(path, params={"horizon_min": HORIZON_MIN})
-    print("TITTEL:", app.title or "(satt i _status_lines)")
-    print("\n".join(app._status_lines(data)))
+    lines = app._status_lines(data)
+    print("TITTEL:", app.title)
+    print("\n".join(lines))
 
 
 if __name__ == "__main__":
