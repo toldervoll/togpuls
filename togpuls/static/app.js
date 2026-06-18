@@ -458,13 +458,9 @@ function renderSituations(sits) {
 
 function renderTimeline(buckets) {
   const host = $("timeline-bars");
-  const meta = $("timeline-meta");
   if (!host) return;
   host.innerHTML = "";
-  if (!buckets.length) {
-    if (meta) meta.textContent = t("timeline_no_data");
-    return;
-  }
+  if (!buckets.length) return;
   const max = Math.max(...buckets.map((b) => b.scheduled), 1);
   const bucketMin = buckets.length > 1
     ? (buckets[1].minutes_offset ?? 0) - (buckets[0].minutes_offset ?? 0)
@@ -533,11 +529,6 @@ function renderTimeline(buckets) {
     marker.title = t("time_now");
     host.appendChild(marker);
   }
-  meta.textContent = t("timeline_meta", {
-    past: pastSched,
-    future: futSched,
-    fcancelled: futCanc,
-  });
 }
 
 // ── Timeline tooltip ───────────────────────────────────────────────────

@@ -630,14 +630,6 @@ h2 {
   color: var(--text-muted);
   padding: 0 4px;
 }
-.tl-foot {
-  display: flex;
-  margin-top: 4px;
-  font-family: var(--font-mono);
-  color: var(--text-muted);
-  font-size: var(--fs-small);
-  padding: 0 4px;
-}
 
 /* ── Stat strip with gauge ────────────────────────────────────────────── */
 .big {
