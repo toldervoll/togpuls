@@ -78,5 +78,5 @@ make clean       # remove the venv
 
 ## Data source
 
-Entur Journey Planner v3, called with `ET-Client-Name: entur-togpuls`.
+Entur Journey Planner v3, called with `ET-Client-Name: kengu-togpuls`.
 See <https://developer.entur.org/> for the upstream API.

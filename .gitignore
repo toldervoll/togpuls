@@ -4,3 +4,12 @@ __pycache__/
 *.pyc
 *.pyo
 .claude/settings.local.json
+/.idea/codeStyles/codeStyleConfig.xml
+/.idea/codeStyles/Project.xml
+/.idea/.gitignore
+/.idea/LNKD.tech Editor.xml
+/.idea/misc.xml
+/.idea/modules.xml
+/.idea/togpuls.iml
+/.idea/vcs.xml
+/.claude/launch.json

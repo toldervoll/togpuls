@@ -16,7 +16,7 @@ JOURNEY_PLANNER_URL = os.environ.get(
     "https://api.entur.io/journey-planner/v3/graphql",
 )
 HEADERS = {
-    "ET-Client-Name": "entur-togpuls",
+    "ET-Client-Name": "kengu-togpuls",
     "Content-Type": "application/json",
 }
 

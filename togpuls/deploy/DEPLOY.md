@@ -56,7 +56,7 @@ automatically. Spec changes:
 | `JOURNEY_PLANNER_URL` | Entur prod | Override the Journey Planner endpoint |
 
 The Entur API requires no key, but the `ET-Client-Name` header is set to
-`entur-togpuls` in `clients/journey_planner.py`. Change it if the app gets
+`kengu-togpuls` in `clients/journey_planner.py`. Change it if the app gets
 a new name or owner.
 
 ## Local docker test
