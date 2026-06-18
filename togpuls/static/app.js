@@ -44,6 +44,49 @@ function apiUrl() {
   return `/api/v1/analysis/${fromEnc}`;
 }
 
+// ── Shareable route in the URL ─────────────────────────────────────────
+// The URL hash mirrors the selected route as `#<from>-<to>` (e.g. #451-337)
+// so a view can be copied and shared. Station ids are NSR stop place ids
+// (NSR:StopPlace:N); we keep only the numeric N in the hash for compactness
+// and re-expand on read. A hash is purely client-side, so a direct link works
+// without a server route.
+
+const STOP_PLACE_PREFIX = "NSR:StopPlace:";
+
+function shortStopId(id) {
+  return id && id.startsWith(STOP_PLACE_PREFIX) ? id.slice(STOP_PLACE_PREFIX.length) : id;
+}
+
+// Expand a hash stop id back to a full NSR id (337 → NSR:StopPlace:337).
+// A value that already looks like a full id is passed through unchanged.
+function fullStopId(value) {
+  if (!value) return "";
+  return /^\d+$/.test(value) ? STOP_PLACE_PREFIX + value : value;
+}
+
+// Parse `#<from>` or `#<from>-<to>` from the URL hash. `to` is always written
+// together with `from`, so a single segment unambiguously means "from only".
+function readUrlRoute() {
+  const raw = location.hash.replace(/^#/, "");
+  if (!raw) return { from: "", to: "", hasRoute: false };
+  const [from, to] = raw.split("-");
+  return { from: fullStopId(from), to: fullStopId(to), hasRoute: true };
+}
+
+// Reflect the current route in the URL hash without adding history entries.
+// `to` always carries `from` alongside it (#337-451) so #451 can only mean
+// from=451. Oslo S with all directions is the default → keep the URL clean.
+function syncUrl() {
+  let hash = "";
+  if (currentTo) {
+    hash = `#${shortStopId(currentFrom)}-${shortStopId(currentTo)}`;
+  } else if (currentFrom && currentFrom !== DEFAULT_FROM_STOP_PLACE_ID) {
+    hash = `#${shortStopId(currentFrom)}`;
+  }
+  const base = location.pathname + location.search;
+  history.replaceState(null, "", hash ? base + hash : base);
+}
+
 function buildPerLineSituations(sits) {
   const byLine = new Map();
   for (const s of sits) {
@@ -1229,6 +1272,12 @@ async function initRoutePicker() {
     if (savedTo) currentTo = savedTo;
   } catch (e) {}
 
+  // A route in the URL hash wins over local prefs so a shared link opens the
+  // intended view. When only `from` is given, `to` is treated as cleared.
+  const urlRoute = readUrlRoute();
+  if (urlRoute.from) currentFrom = urlRoute.from;
+  if (urlRoute.hasRoute) currentTo = urlRoute.to;
+
   let stations = [];
   try {
     const r = await fetch("/api/v1/stations", { cache: "no-store" });
@@ -1249,8 +1298,15 @@ async function initRoutePicker() {
   if (![...fromSel.options].some((o) => o.value === currentFrom)) {
     currentFrom = DEFAULT_FROM_STOP_PLACE_ID;
   }
+  if (currentTo && (currentTo === currentFrom ||
+      ![...toSel.options].some((o) => o.value === currentTo))) {
+    currentTo = "";
+  }
   fromSel.value = currentFrom;
   toSel.value = currentTo;
+  // Normalise the address bar to the resolved route (e.g. an unknown id in
+  // the link falls back to defaults, and the URL should reflect that).
+  syncUrl();
 
   const swapBtn = $("swap-btn");
 
@@ -1266,11 +1322,22 @@ async function initRoutePicker() {
       if (currentTo) localStorage.setItem("togpuls-to", currentTo);
       else localStorage.removeItem("togpuls-to");
     } catch (e) {}
+    syncUrl();
     refresh();
   }
 
   fromSel.addEventListener("change", applyRoute);
   toSel.addEventListener("change", applyRoute);
+
+  // Re-apply the route when the hash is edited or a new link is opened in the
+  // same tab. replaceState (used by syncUrl) does not fire this, so no loop.
+  window.addEventListener("hashchange", () => {
+    const r = readUrlRoute();
+    const known = (sel, id) => id && [...sel.options].some((o) => o.value === id);
+    fromSel.value = known(fromSel, r.from) ? r.from : DEFAULT_FROM_STOP_PLACE_ID;
+    toSel.value = known(toSel, r.to) ? r.to : "";
+    applyRoute();
+  });
 
   if (swapBtn) {
     swapBtn.disabled = !toSel.value;
