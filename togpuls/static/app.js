@@ -308,10 +308,11 @@ function renderSituations(sits) {
       li.className = `sev-${sev}`;
       const lines = g.lines.join(", ");
       const countBadge = g.count > 1 ? `<span class="sit-count-badge">×${g.count}</span>` : "";
+      // sit-top holds the text and any chips on the same line
       li.innerHTML = `
         <span class="sit-sev sev-${sev}"></span>
         <div class="sit-body">
-          <div class="sit-text"></div>
+          <div class="sit-top"><div class="sit-text"></div></div>
           <div class="sit-lines"></div>
         </div>
         ${countBadge}`;
@@ -319,14 +320,16 @@ function renderSituations(sits) {
       li.querySelector(".sit-text").textContent = g.text;
       li.querySelector(".sit-lines").textContent = lines ? t("sit_lines_prefix", { lines }) : "";
 
-      // Disruption enrichment — chips + collapsible history
+      // Disruption enrichment — chips inline with text; history below lines
       const d = g.disruption;
       if (d) {
         const body = li.querySelector(".sit-body");
+        const top = li.querySelector(".sit-top");
         const reopen = d.reopen;
         const impact = d.impact;
+        const profile = d.alert;
 
-        // Chips row
+        // Chips — appended into sit-top so they appear right of the text
         const chipsDiv = document.createElement("div");
         chipsDiv.className = "sit-chips";
 
@@ -355,10 +358,9 @@ function renderSituations(sits) {
           chipsDiv.appendChild(chip);
         }
 
-        if (chipsDiv.children.length) body.appendChild(chipsDiv);
+        if (chipsDiv.children.length) top.appendChild(chipsDiv);
 
-        // Collapsible historical profile
-        const profile = d.alert;
+        // Collapsible historical profile — sits below sit-lines in the body
         if (profile) {
           const profileRows = [
             ["sit_hist_cancel_rate",    profile.cancel_rate    != null ? fmtPct(profile.cancel_rate)    : null],

@@ -160,6 +160,34 @@ async def _compute_analysis(
     except Exception:
         _logger.warning("Disruptions enrichment failed", exc_info=True)
 
+    # Fallback enrichment for situations not matched by the disruptions service.
+    # Provides current-window cancel/trouble rates from train_movements.by_line.
+    # alert_tier is intentionally omitted — it would just duplicate the severity
+    # label already shown on the card. No reopen/impact estimates either — those
+    # require historical distributions we don't have.
+    _SEVERITY_SCORE = {"hoy": 1.0, "middels": 0.5, "lav": 0.2}
+    by_line = {
+        lm["linje"]: lm
+        for lm in analysis.get("train_movements", {}).get("by_line", [])
+    }
+    for sit in analysis.get("situations", []):
+        if "disruption" in sit:
+            continue
+        severity = sit.get("severity", "")
+        if severity not in _SEVERITY_SCORE:
+            continue
+        affected = [l for l in sit.get("paavirker_linjer", []) if l in by_line]
+        scheduled = sum(by_line[l]["scheduled"] for l in affected)
+        cancelled = sum(by_line[l]["cancelled"] for l in affected)
+        delayed = sum(by_line[l]["delayed_gt_3min"] for l in affected)
+        if not scheduled:
+            continue
+        sit["disruption"] = {"alert": {
+            "alert_score": _SEVERITY_SCORE[severity],
+            "cancel_rate": cancelled / scheduled,
+            "trouble_rate": (cancelled + delayed) / scheduled,
+        }}
+
     return analysis
 
 
