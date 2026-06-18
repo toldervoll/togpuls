@@ -9,7 +9,7 @@ Konfigurasjon via miljøvariabler (alle valgfrie):
     TOGPULS_BASE_URL   standard https://togpuls.kengu.no
     TOGPULS_STOP_PLACE standard NSR:StopPlace:337 (Oslo S) — «fra»
     TOGPULS_TO_PLACE   standard tom (= alle avganger); sett for korridor
-    TOGPULS_HORIZON    standard 60 (minutter framover)
+    TOGPULS_HORIZON    standard 90 (minutter framover)
     TOGPULS_POLL_SEC   standard 30
 """
 
@@ -25,7 +25,7 @@ import rumps
 BASE_URL = os.environ.get("TOGPULS_BASE_URL", "https://togpuls.kengu.no").rstrip("/")
 FROM_PLACE = os.environ.get("TOGPULS_STOP_PLACE", "NSR:StopPlace:337")
 TO_PLACE = os.environ.get("TOGPULS_TO_PLACE", "") or None
-HORIZON_MIN = int(os.environ.get("TOGPULS_HORIZON", "60"))
+HORIZON_MIN = int(os.environ.get("TOGPULS_HORIZON", "90"))
 POLL_SEC = int(os.environ.get("TOGPULS_POLL_SEC", "30"))
 
 TIER_DOT = {"high": "🔴", "medium": "🟡", "low": "🟢"}

@@ -47,7 +47,7 @@ Settes med miljøvariabler (alle valgfrie):
 | `TOGPULS_BASE_URL`   | `https://togpuls.kengu.no` | API-host |
 | `TOGPULS_STOP_PLACE` | `NSR:StopPlace:337` (Oslo S) | «Fra»-stasjon |
 | `TOGPULS_TO_PLACE`   | _(tom)_ | «Til»-stasjon — settes for korridor, tom = alle avganger |
-| `TOGPULS_HORIZON`    | `60` | Tidsvindu framover i minutter |
+| `TOGPULS_HORIZON`    | `90` | Tidsvindu framover i minutter |
 | `TOGPULS_POLL_SEC`   | `30` | Oppdateringsintervall |
 
 Eksempel — korridor Oslo S → Lillestrøm, 90 min vindu:
