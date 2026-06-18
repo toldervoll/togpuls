@@ -976,40 +976,33 @@ h2 {
 .sit-estimate.overdue { color: var(--sev-hoy); border-color: var(--sev-hoy); }
 .sit-meta {
   display: flex;
-  flex-wrap: wrap;
   align-items: baseline;
   gap: 4px 8px;
+  position: relative;
 }
-details.sit-detail {
-  font-size: 0.6875rem;
-  line-height: 1;
-  align-self: baseline;
+.sit-hist-tip {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 10;
+  min-width: 180px;
+  padding: 9px 11px;
+  background: var(--console-bg-2);
+  border: 1px solid var(--console-edge-2);
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  color: var(--console-text);
+  pointer-events: none;
+  font-size: 0.75rem;
+  line-height: 1.45;
 }
-details.sit-detail[open] {
-  flex-basis: 100%;
-  margin-top: 4px;
-}
-details.sit-detail > summary {
-  cursor: pointer;
-  list-style: none;
-  user-select: none;
-  color: var(--text-muted);
-  font-size: 0.625rem;
-  font-weight: var(--fw-bold);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-details.sit-detail > summary::-webkit-details-marker { display: none; }
-details.sit-detail > summary::before      { content: "▸ "; }
-details.sit-detail[open] > summary::before { content: "▾ "; }
-.sit-detail-grid {
+.sit-hist-grid {
   display: grid;
   grid-template-columns: auto auto;
   gap: 3px 16px;
-  margin-top: 6px;
 }
-.sit-hist-label { color: var(--text-muted); font-size: 0.625rem; }
-.sit-hist-value { color: var(--text); font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 0.625rem; }
+.sit-hist-label { color: var(--console-text-2, var(--text-muted)); }
+.sit-hist-value { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .sit-count-badge {
   background: var(--surface-3);
   color: var(--accent);

@@ -157,12 +157,12 @@ function applyEstimate(li, est) {
   if (tip) el.title = tip;
 }
 
-// Populate the .sit-detail collapsible with historical profile rows from
-// estimate.alert + estimate.reopen/impact. Hidden when the estimate only has
-// the two rates already shown as LED meters (fallback path).
+// Attach a hover tooltip to .sit-estimate showing historical profile rows
+// from estimate.alert + estimate.reopen/impact. No-ops when the estimate
+// only has the two rates already visible as LED meters (fallback path).
 function applyHistory(li, est) {
-  const el = li.querySelector(".sit-detail");
-  if (!el) return;
+  const chip = li.querySelector(".sit-estimate");
+  if (!chip) return;
   const alert = est && typeof est === "object" ? est.alert : null;
   const reopen = est && typeof est === "object" ? est.reopen : null;
   const impact = est && typeof est === "object" ? est.impact : null;
@@ -188,9 +188,12 @@ function applyHistory(li, est) {
 
   if (!rows.length) return;
 
-  el.querySelector("summary").textContent = t("sit_show_history");
-  const grid = el.querySelector(".sit-detail-grid");
-  grid.replaceChildren();
+  const tip = document.createElement("div");
+  tip.className = "sit-hist-tip";
+  tip.setAttribute("role", "tooltip");
+  tip.hidden = true;
+  const grid = document.createElement("div");
+  grid.className = "sit-hist-grid";
   for (const [key, val] of rows) {
     const label = document.createElement("span");
     label.className = "sit-hist-label";
@@ -201,7 +204,12 @@ function applyHistory(li, est) {
     grid.appendChild(label);
     grid.appendChild(value);
   }
-  el.hidden = false;
+  tip.appendChild(grid);
+
+  const meta = chip.closest(".sit-meta") || chip.parentElement;
+  meta.appendChild(tip);
+  chip.addEventListener("mouseenter", () => { tip.hidden = false; });
+  meta.addEventListener("mouseleave", () => { tip.hidden = true; });
 }
 
 // ── Alert metrics (estimate.alert) ──────────────────────────────────────
@@ -462,7 +470,6 @@ function renderSituations(sits) {
             <div class="sit-text"></div>
             <div class="sit-meta">
               <div class="sit-estimate"></div>
-              <details class="sit-detail" hidden><summary></summary><div class="sit-detail-grid"></div></details>
             </div>
             <div class="sit-lines"></div>
           </div>
@@ -493,7 +500,6 @@ function renderSituations(sits) {
             <div class="sit-text"></div>
             <div class="sit-meta">
               <div class="sit-estimate"></div>
-              <details class="sit-detail" hidden><summary></summary><div class="sit-detail-grid"></div></details>
             </div>
             <div class="sit-lines"></div>
           </div>
