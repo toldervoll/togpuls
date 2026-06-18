@@ -66,7 +66,6 @@ function groupSituations(sits) {
         lines: new Set(),
         quays: new Set(),
         count: 0,
-        disruption: null, // highest alert_score enrichment from group members
       };
       groups.set(key, g);
     }
@@ -76,12 +75,6 @@ function groupSituations(sits) {
     const cur = SEVERITY_RANK[g.severity] ?? 99;
     const inc = SEVERITY_RANK[s.severity] ?? 99;
     if (inc < cur) g.severity = s.severity;
-    // Pick the member with the highest alert_score as the group's enrichment
-    if (s.disruption) {
-      const dScore = s.disruption.alert?.alert_score ?? -Infinity;
-      const curScore = g.disruption?.alert?.alert_score ?? -Infinity;
-      if (dScore > curScore) g.disruption = s.disruption;
-    }
   }
   return Array.from(groups.values())
     .map((g) => ({
@@ -308,97 +301,16 @@ function renderSituations(sits) {
       li.className = `sev-${sev}`;
       const lines = g.lines.join(", ");
       const countBadge = g.count > 1 ? `<span class="sit-count-badge">×${g.count}</span>` : "";
-      // sit-top holds the text and any chips on the same line
       li.innerHTML = `
         <span class="sit-sev sev-${sev}"></span>
         <div class="sit-body">
-          <div class="sit-top"><div class="sit-text"></div></div>
+          <div class="sit-text"></div>
           <div class="sit-lines"></div>
         </div>
         ${countBadge}`;
       li.querySelector(".sit-sev").textContent = severityLabel(sev);
       li.querySelector(".sit-text").textContent = g.text;
       li.querySelector(".sit-lines").textContent = lines ? t("sit_lines_prefix", { lines }) : "";
-
-      // Disruption enrichment — chips inline with text; history below lines
-      const d = g.disruption;
-      if (d) {
-        const body = li.querySelector(".sit-body");
-        const top = li.querySelector(".sit-top");
-        const reopen = d.reopen;
-        const impact = d.impact;
-        const profile = d.alert;
-
-        // Chips — appended into sit-top so they appear right of the text
-        const chipsDiv = document.createElement("div");
-        chipsDiv.className = "sit-chips";
-
-        const tier = d.alert?.alert_tier;
-        const TIER_COLOR = { high: "red", medium: "amber", low: "blue" };
-        if (tier && TIER_COLOR[tier]) {
-          const chip = document.createElement("span");
-          chip.className = `sit-chip ${TIER_COLOR[tier]}`;
-          chip.textContent = t(`sit_alert_tier.${tier}`);
-          chipsDiv.appendChild(chip);
-        }
-
-        if (reopen != null) {
-          const chip = document.createElement("span");
-          chip.className = reopen.overdue ? "sit-chip overdue" : "sit-chip";
-          chip.textContent = reopen.overdue
-            ? t("sit_reopen_overdue")
-            : t("sit_reopen_eta", { mins: reopen.p50_min_from_now });
-          chipsDiv.appendChild(chip);
-        }
-
-        if (impact != null) {
-          const chip = document.createElement("span");
-          chip.className = "sit-chip";
-          chip.textContent = t("sit_impact", { mins: impact.p50_min_from_now });
-          chipsDiv.appendChild(chip);
-        }
-
-        if (chipsDiv.children.length) top.appendChild(chipsDiv);
-
-        // Collapsible historical profile — sits below sit-lines in the body
-        if (profile) {
-          const profileRows = [
-            ["sit_hist_cancel_rate",    profile.cancel_rate    != null ? fmtPct(profile.cancel_rate)    : null],
-            ["sit_hist_trouble_rate",   profile.trouble_rate   != null ? fmtPct(profile.trouble_rate)   : null],
-            ["sit_hist_delay_p50",      profile.delay_p50      != null ? `${profile.delay_p50} min`     : null],
-            ["sit_hist_delay_p90",      profile.delay_p90      != null ? `${profile.delay_p90} min`     : null],
-            ["sit_hist_exp_disruption", profile.exp_disruption_min != null ? `~${Math.round(profile.exp_disruption_min)} min` : null],
-            ["sit_hist_n_situations",   profile.n_situations   != null ? fmtNum(profile.n_situations)   : null],
-          ];
-          if (reopen) profileRows.push(["sit_hist_reopen_spread", `p80: ${reopen.p80_min_from_now} min · p90: ${reopen.p90_min_from_now} min`]);
-          if (impact) profileRows.push(["sit_hist_impact_spread", `p80: ${impact.p80_min_from_now} min · p90: ${impact.p90_min_from_now} min`]);
-
-          const grid = document.createElement("div");
-          grid.className = "sit-detail-grid";
-          for (const [key, val] of profileRows) {
-            if (val == null) continue;
-            const label = document.createElement("span");
-            label.className = "sit-hist-label";
-            label.textContent = t(key);
-            const value = document.createElement("span");
-            value.className = "sit-hist-value";
-            value.textContent = val;
-            grid.appendChild(label);
-            grid.appendChild(value);
-          }
-
-          if (grid.children.length) {
-            const details = document.createElement("details");
-            details.className = "sit-detail";
-            const summary = document.createElement("summary");
-            summary.textContent = t("sit_show_history");
-            details.appendChild(summary);
-            details.appendChild(grid);
-            body.appendChild(details);
-          }
-        }
-      }
-
       ul.appendChild(li);
     }
   }
