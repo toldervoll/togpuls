@@ -210,6 +210,25 @@ const I18N_STRINGS = {
     "summary_sit_displaced": ", og ~{n} til fikk toget sitt kansellert og må finne et alternativ",
 
     "footer": "togpuls · data: Entur Journey Planner v3 · oppdatering hver 30 s · buffer 20 s",
+    "footer_about": "Om",
+    "footer_github": "GitHub",
+    "footer_api": "API",
+
+    // About page
+    "about_title": "Om togpuls",
+    "about_back": "Tilbake til dashbordet",
+    "about_lead": "togpuls er et sanntidsbilde av togtrafikken på en norsk stasjon — hvor mye som faktisk kjører, hva som er innstilt eller forsinket, og hvilke avvik som påvirker reisende akkurat nå.",
+    "about_data_h": "Datakilde",
+    "about_data_b": "Alle tall kommer fra Entur Journey Planner v3 (GraphQL). Avgangene hentes 90 minutter fram og 90 minutter tilbake i tid, og avvik beriker bildet med SIRI-situasjoner og KIX-estimater. Dataene oppdateres hvert 30. sekund med en buffer på 20 sekunder.",
+    "about_how_h": "Slik leses tallene",
+    "about_how_b": "Måleren viser andelen planlagte avganger som er gjennomført (bakover) og forventet gjennomført (framover). Risikonivået og LED-målerne for innstillinger og forsinkelser er forankret i sanntidsdata, slik at nivåordet aldri ligger lavere enn målerne tilsier.",
+    "about_api_h": "API",
+    "about_api_b": "De samme dataene er åpne via et enkelt REST-API. Se den interaktive dokumentasjonen for endepunkter og svarformat.",
+    "about_api_link": "Åpne API-dokumentasjon",
+    "about_source_h": "Kildekode",
+    "about_source_b": "togpuls er åpen kildekode — FastAPI-backend og rammeverkfri frontend, uten byggesteg.",
+    "about_source_link": "Se prosjektet på GitHub",
+    "about_footer_note": "Data: Entur Journey Planner v3 · NLOD-lisens",
   },
 
   en: {
@@ -402,6 +421,25 @@ const I18N_STRINGS = {
     "summary_sit_displaced": ", and ~{n} more had their train cancelled and need to find an alternative",
 
     "footer": "togpuls · data: Entur Journey Planner v3 · refresh every 30 s · buffer 20 s",
+    "footer_about": "About",
+    "footer_github": "GitHub",
+    "footer_api": "API",
+
+    // About page
+    "about_title": "About togpuls",
+    "about_back": "Back to the dashboard",
+    "about_lead": "togpuls is a real-time picture of train traffic at a Norwegian station — how much is actually running, what's cancelled or delayed, and which disruptions affect travellers right now.",
+    "about_data_h": "Data source",
+    "about_data_b": "All figures come from Entur Journey Planner v3 (GraphQL). Departures are fetched 90 minutes ahead and 90 minutes back in time, enriched with SIRI situations and KIX estimates. The data refreshes every 30 seconds with a 20-second buffer.",
+    "about_how_h": "Reading the numbers",
+    "about_how_b": "The gauge shows the share of scheduled departures that ran (backward) and are expected to run (forward). The risk tier and the LED meters for cancellations and delays are anchored in live data, so the tier word never sits lower than the meters imply.",
+    "about_api_h": "API",
+    "about_api_b": "The same data is open via a simple REST API. See the interactive documentation for endpoints and the response format.",
+    "about_api_link": "Open API documentation",
+    "about_source_h": "Source code",
+    "about_source_b": "togpuls is open source — a FastAPI backend and a framework-free frontend, with no build step.",
+    "about_source_link": "View the project on GitHub",
+    "about_footer_note": "Data: Entur Journey Planner v3 · NLOD licence",
   },
 };
 

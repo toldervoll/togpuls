@@ -8,9 +8,10 @@ from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Annotated
 
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -47,6 +48,16 @@ COMMON_STATIONS: dict[str, str] = {
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
 _cache = TTLCache(ttl_seconds=CACHE_TTL_SECONDS)
+
+# Shared query parameter: how far ahead departures are fetched, in minutes.
+HorizonMin = Annotated[
+    int,
+    Query(
+        ge=10,
+        le=360,
+        description="Tidshorisont i minutter — hvor langt fram avganger hentes.",
+    ),
+]
 
 # ── Risk-tier helpers ──────────────────────────────────────────────────────
 # Order risk tiers worst-first. Lower rank = more severe.
@@ -272,7 +283,37 @@ async def lifespan(app: FastAPI):
         yield
 
 
-app = FastAPI(title="togpuls", lifespan=lifespan)
+API_DESCRIPTION = """
+Sanntidsanalyse av togtrafikk for norske stasjoner (standard Oslo S), bygget på
+[Entur Journey Planner v3](https://developer.entur.org/pages-journeyplanner-journeyplanner).
+
+API-et henter avganger fram og tilbake i tid, slår sammen avvik (SIRI-situasjoner)
+og KIX-estimater, og returnerer en samlet `Analysis`: risikonivå, innstillings- og
+forsinkelsesrater, passasjer-/kapasitetsmodell, tidslinje og aktive situasjoner.
+
+Alle analyse-endepunkt deler samme svarformat og tar `horizon_min` som styrer hvor
+langt fram avgangene hentes (standard 90 minutter). Stasjons-ID-er er NSR stop place-ID-er
+slik Journey Planner emitterer dem — se `/api/v1/stations` for de vanligste.
+""".strip()
+
+TAGS_METADATA = [
+    {"name": "analysis", "description": "Samlet trafikkanalyse for en stasjon eller en strekning."},
+    {"name": "reference", "description": "Oppslagsdata: stasjonsliste og helsesjekk."},
+]
+
+app = FastAPI(
+    title="togpuls",
+    version="1.0.0",
+    description=API_DESCRIPTION,
+    summary="Sanntids togtrafikkanalyse basert på Entur Journey Planner v3.",
+    openapi_tags=TAGS_METADATA,
+    docs_url="/api/v1/docs",
+    redoc_url="/api/v1/redoc",
+    openapi_url="/api/v1/openapi.json",
+    contact={"name": "Entur", "url": "https://entur.org"},
+    license_info={"name": "NLOD", "url": "https://data.norge.no/nlod/no/2.0"},
+    lifespan=lifespan,
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -286,7 +327,7 @@ app.add_middleware(
 async def no_cache_static(request, call_next):
     response = await call_next(request)
     path = request.url.path
-    if path == "/" or path == "/sw.js" or path.startswith("/static"):
+    if path in ("/", "/about", "/sw.js") or path.startswith("/static"):
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
@@ -471,12 +512,17 @@ async def _compute_analysis(
     return analysis
 
 
-@app.get("/")
+@app.get("/", include_in_schema=False)
 async def root() -> FileResponse:
     return FileResponse(STATIC_DIR / "index.html")
 
 
-@app.get("/sw.js")
+@app.get("/about", include_in_schema=False)
+async def about() -> FileResponse:
+    return FileResponse(STATIC_DIR / "about.html")
+
+
+@app.get("/sw.js", include_in_schema=False)
 async def service_worker() -> FileResponse:
     # Served from the root so its scope covers the entire site, not just /static/.
     return FileResponse(
@@ -486,29 +532,62 @@ async def service_worker() -> FileResponse:
     )
 
 
-@app.get("/api/v1/health")
+@app.get(
+    "/api/v1/health",
+    tags=["reference"],
+    summary="Helsesjekk",
+    description="Returnerer `{\"ok\": true}` når tjenesten kjører. Brukes til liveness/readiness.",
+    response_description="Tjenesten er oppe.",
+)
 async def health() -> dict:
     return {"ok": True}
 
 
-@app.get("/api/v1/stations")
+@app.get(
+    "/api/v1/stations",
+    tags=["reference"],
+    summary="List vanlige stasjoner",
+    description=(
+        "De vanligste stasjonene med NSR stop place-ID og navn. ID-ene her er "
+        "garantert kompatible med analyse-endepunktene (Entur-geocoderens søsken-ID-er er det ikke)."
+    ),
+    response_description="Liste av `{id, name}`.",
+)
 async def stations() -> list[dict]:
     return [{"id": k, "name": v} for k, v in COMMON_STATIONS.items()]
 
 
-@app.get("/api/v1/analysis")
-async def analysis_default(horizon_min: int = DEFAULT_HORIZON_MIN) -> Analysis:
+@app.get(
+    "/api/v1/analysis",
+    tags=["analysis"],
+    summary="Analyse for Oslo S (standard)",
+    description=(
+        "Samlet trafikkanalyse for standardstasjonen Oslo S "
+        f"(`{DEFAULT_STOP_PLACE_ID}`). Snarvei for `/api/v1/analysis/{{stop_place_id}}`."
+    ),
+    response_description="Samlet `Analysis` for stasjonen.",
+)
+async def analysis_default(horizon_min: HorizonMin = DEFAULT_HORIZON_MIN) -> Analysis:
     return await _cache.get_or_compute(
         (DEFAULT_STOP_PLACE_ID, None, horizon_min),
         lambda: _compute_analysis(DEFAULT_STOP_PLACE_ID, horizon_min),
     )
 
 
-@app.get("/api/v1/analysis/{stop_place_id}/to/{to_stop_place_id}")
+@app.get(
+    "/api/v1/analysis/{stop_place_id}/to/{to_stop_place_id}",
+    tags=["analysis"],
+    summary="Strekningsanalyse (fra → til)",
+    description=(
+        "Analyse for `stop_place_id` filtrert til avganger som betjener strekningen "
+        "mot `to_stop_place_id`. Begge er NSR stop place-ID-er (se `/api/v1/stations`)."
+    ),
+    response_description="Samlet `Analysis` begrenset til strekningen.",
+)
 async def analysis_corridor(
     stop_place_id: str,
     to_stop_place_id: str,
-    horizon_min: int = DEFAULT_HORIZON_MIN,
+    horizon_min: HorizonMin = DEFAULT_HORIZON_MIN,
 ) -> Analysis:
     return await _cache.get_or_compute(
         (stop_place_id, to_stop_place_id, horizon_min),
@@ -516,8 +595,17 @@ async def analysis_corridor(
     )
 
 
-@app.get("/api/v1/analysis/{stop_place_id}")
-async def analysis_for(stop_place_id: str, horizon_min: int = DEFAULT_HORIZON_MIN) -> Analysis:
+@app.get(
+    "/api/v1/analysis/{stop_place_id}",
+    tags=["analysis"],
+    summary="Analyse for en stasjon",
+    description=(
+        "Samlet trafikkanalyse for én stasjon, angitt med NSR stop place-ID "
+        "(f.eks. Oslo S = `NSR:StopPlace:337`; se `/api/v1/stations`)."
+    ),
+    response_description="Samlet `Analysis` for stasjonen.",
+)
+async def analysis_for(stop_place_id: str, horizon_min: HorizonMin = DEFAULT_HORIZON_MIN) -> Analysis:
     return await _cache.get_or_compute(
         (stop_place_id, None, horizon_min),
         lambda: _compute_analysis(stop_place_id, horizon_min),

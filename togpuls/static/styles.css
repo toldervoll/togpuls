@@ -1137,6 +1137,79 @@ h2 {
   padding: var(--space-sm) 0 var(--space-xl);
   border-top: 1px solid var(--border);
 }
+.ftr p { margin: 0; }
+.ftr-links {
+  margin-top: var(--space-xs);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-xs);
+}
+.ftr-links a {
+  color: var(--text-muted);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.ftr-links a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+.ftr-links a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ── About page ───────────────────────────────────────────────────────── */
+.about {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--page-pad);
+  display: grid;
+  gap: var(--space-lg);
+}
+.about-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+.about-hdr .wordmark { text-decoration: none; color: inherit; }
+.about-controls { display: flex; align-items: center; gap: var(--space-xs); }
+.about-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-lg);
+  display: grid;
+  gap: var(--space-lg);
+}
+.about-lead {
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  color: var(--text);
+  margin: 0;
+}
+.about-sec { display: grid; gap: var(--space-xs); }
+.about-sec h2 { color: var(--text-muted); }
+.about-sec p { margin: 0; line-height: 1.6; color: var(--text); }
+.about-sec a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: var(--fw-med);
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s ease;
+}
+.about-sec a:hover { border-bottom-color: var(--accent); }
+.about-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs2);
+  color: var(--text-muted);
+  text-decoration: none;
+}
+.about-back:hover { color: var(--accent); }
+.about-back .icon { width: 1em; height: 1em; transform: rotate(180deg); }
 
 /* ── Responsive: tablet ───────────────────────────────────────────────── */
 @media (max-width: 720px) {

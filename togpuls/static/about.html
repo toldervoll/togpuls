@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="no">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title data-i18n="about_title">Om togpuls</title>
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f4f1" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0d1f" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;800&family=JetBrains+Mono:wght@400;500&display=swap" />
+    <script>
+      // Apply persisted theme + language before stylesheet paints to avoid a flash.
+      try {
+        const t = localStorage.getItem("togpuls-theme");
+        if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+        const l = localStorage.getItem("togpuls-lang");
+        if (l === "no" || l === "en") {
+          document.documentElement.setAttribute("lang", l);
+        } else {
+          const n = (navigator.language || "").toLowerCase();
+          const isNb = n.startsWith("nb") || n.startsWith("nn") || n.startsWith("no");
+          document.documentElement.setAttribute("lang", isNb ? "no" : "en");
+        }
+      } catch (e) {}
+    </script>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+
+    <!-- Inline SVG sprite — only the symbols this page uses -->
+    <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+      <symbol id="brand-signal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="2" width="12" height="13" rx="2"/>
+        <circle cx="12" cy="8" r="2.5" fill="currentColor" stroke="none"/>
+        <line x1="12" y1="15" x2="12" y2="20"/>
+        <line x1="9" y1="20" x2="15" y2="20"/>
+      </symbol>
+      <symbol id="arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="5" y1="12" x2="19" y2="12"/>
+        <polyline points="13 6 19 12 13 18"/>
+      </symbol>
+      <symbol id="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <circle cx="12" cy="12" r="5"/>
+        <line x1="12" y1="1" x2="12" y2="3"/>
+        <line x1="12" y1="21" x2="12" y2="23"/>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+        <line x1="1" y1="12" x2="3" y2="12"/>
+        <line x1="21" y1="12" x2="23" y2="12"/>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </symbol>
+      <symbol id="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </symbol>
+      <symbol id="globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="2" y1="12" x2="22" y2="12"/>
+        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+      </symbol>
+    </svg>
+
+    <main class="about">
+      <header class="about-hdr">
+        <a class="wordmark" href="/">
+          <svg class="icon brand-icon"><use href="#brand-signal"/></svg>
+          <span class="brand-name">togpuls</span>
+        </a>
+        <div class="about-controls">
+          <button id="lang-toggle" class="lang-toggle" type="button"
+                  data-i18n-attr="aria-label:lang_toggle,title:lang_toggle"
+                  aria-label="Switch to English" title="Switch to English">
+            <svg class="icon" aria-hidden="true"><use href="#globe"/></svg>
+            <span id="lang-toggle-label" data-i18n="lang_toggle_label">EN</span>
+          </button>
+          <button id="theme-toggle" class="theme-toggle icon-btn" type="button"
+                  data-i18n-attr="aria-label:theme_toggle,title:theme_toggle"
+                  aria-label="Bytt tema" title="Bytt tema">
+            <span id="theme-toggle-icon" aria-hidden="true">
+              <svg class="icon icon-moon"><use href="#moon"/></svg>
+              <svg class="icon icon-sun"><use href="#sun"/></svg>
+            </span>
+          </button>
+        </div>
+      </header>
+
+      <article class="about-card">
+        <h1 class="sr-only" data-i18n="about_title">Om togpuls</h1>
+        <p class="about-lead" data-i18n="about_lead"></p>
+
+        <section class="about-sec">
+          <h2 data-i18n="about_data_h">Datakilde</h2>
+          <p data-i18n="about_data_b"></p>
+        </section>
+
+        <section class="about-sec">
+          <h2 data-i18n="about_how_h">Slik leses tallene</h2>
+          <p data-i18n="about_how_b"></p>
+        </section>
+
+        <section class="about-sec">
+          <h2 data-i18n="about_api_h">API</h2>
+          <p data-i18n="about_api_b"></p>
+          <p><a href="/api/v1/docs" data-i18n="about_api_link">Åpne API-dokumentasjon</a></p>
+        </section>
+
+        <section class="about-sec">
+          <h2 data-i18n="about_source_h">Kildekode</h2>
+          <p data-i18n="about_source_b"></p>
+          <p><a href="https://github.com/kengu/togpuls" target="_blank" rel="noopener" data-i18n="about_source_link">Se prosjektet på GitHub</a></p>
+        </section>
+      </article>
+
+      <footer class="ftr muted small">
+        <p data-i18n="about_footer_note">Data: Entur Journey Planner v3 · NLOD-lisens</p>
+        <nav class="ftr-links" aria-label="togpuls">
+          <a class="about-back" href="/">
+            <svg class="icon" aria-hidden="true"><use href="#arrow-right"/></svg>
+            <span data-i18n="about_back">Tilbake til dashbordet</span>
+          </a>
+        </nav>
+      </footer>
+    </main>
+
+    <script src="/static/i18n.js" defer></script>
+    <script>
+      // Minimal theme + language wiring for the standalone About page.
+      // (The dashboard's app.js is not loaded here.)
+      document.addEventListener("DOMContentLoaded", () => {
+        // i18n.js hard-codes document.title = t("title"); restore the About title.
+        const setTitle = () => { document.title = t("about_title"); };
+        setTitle();
+        document.addEventListener("i18n:change", setTitle);
+
+        const themeBtn = document.getElementById("theme-toggle");
+        if (themeBtn) {
+          themeBtn.addEventListener("click", () => {
+            const root = document.documentElement;
+            const dark = root.getAttribute("data-theme") === "dark"
+              || (!root.getAttribute("data-theme")
+                  && window.matchMedia("(prefers-color-scheme: dark)").matches);
+            const next = dark ? "light" : "dark";
+            root.setAttribute("data-theme", next);
+            try { localStorage.setItem("togpuls-theme", next); } catch (e) {}
+          });
+        }
+
+        const langBtn = document.getElementById("lang-toggle");
+        if (langBtn) {
+          langBtn.addEventListener("click", () => {
+            setLang(currentLang() === "no" ? "en" : "no");
+          });
+        }
+      });
+    </script>
+  </body>
+</html>
