@@ -74,7 +74,16 @@ make configure   # create venv, install deps (idempotent)
 make serve       # run the API + widget
 make cli         # run the CLI (JSON to stdout)
 make clean       # remove the venv
+make macos-run   # run the macOS menu bar app from source
+make macos-app   # build standalone macos/dist/Togpuls.app
+make macos-clean # remove the macOS venv + build artifacts
 ```
+
+## macOS menu bar app
+
+A small menu bar app (`macos/`) showing next departures, deviations and
+situations live from the API. Build it with `make macos-app` — see
+[macos/README.md](macos/README.md) for details.
 
 ## Data source
 

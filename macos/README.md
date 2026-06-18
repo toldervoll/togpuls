@@ -15,15 +15,28 @@ Tittelen viser risikoprikk + neste avgang og status, f.eks. `🟡 L1 16:24 +6`
 
 ## Kom i gang
 
+Enklest via `make` fra repo-roten:
+
+```bash
+make macos-run     # kjør fra kildekode
+make macos-app     # bygg standalone macos/dist/Togpuls.app
+make macos-clean   # fjern venv + byggeartefakter
+```
+
+Appen dukker opp i menylinjen øverst til høyre. Velg **Avslutt** i menyen for
+å stoppe den.
+
+> `make`-targetene lager en egen venv i `macos/.venv` med et framework-Python
+> (standard `python3.12`). Overstyr med f.eks. `make macos-app MACOS_PY=python3.13`.
+
+Manuelt, uten `make`:
+
 ```bash
 cd macos
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 python togpuls_bar.py
 ```
-
-Appen dukker opp i menylinjen øverst til høyre. Velg **Avslutt** i menyen for
-å stoppe den.
 
 ## Konfigurasjon
 
