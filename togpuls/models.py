@@ -32,6 +32,10 @@ class Situation(TypedDict, total=False):
     paavirker_linjer: list[str]
     paavirker_quays: list[str]
     estimate: Any
+    # Cluster id grouping messages that describe the same underlying event
+    # (assigned in api/app.py). Several SX messages — e.g. a cancellation and
+    # its "take the next train" advice — share one event_id.
+    event_id: str
 
 
 class LineMovement(TypedDict):
@@ -41,6 +45,11 @@ class LineMovement(TypedDict):
     realised: int
     cancelled: int
     delayed_gt_3min: int
+    # Forward-only counts (now → horizon), used to tell an actively-disrupting
+    # line apart from one that has already recovered.
+    future_scheduled: int
+    future_cancelled: int
+    future_delayed_gt_3min: int
 
 
 class MovementStats(TypedDict):

@@ -961,6 +961,8 @@ h2 {
 
 .sit-text  { color: var(--text); font-size: 0.875rem; line-height: 1.4; flex: 1; min-width: 0; }
 .sit-lines { color: var(--text-muted); font-size: var(--fs-small); flex-basis: 100%; }
+.sit-members { color: var(--text-muted); font-size: var(--fs-small); flex-basis: 100%; opacity: 0.85; }
+.sit-members:empty { display: none; }
 .sit-estimate {
   display: inline-flex;
   align-items: center;

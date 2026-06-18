@@ -170,6 +170,7 @@ def analyse(
     by_line_acc: dict[str, dict] = defaultdict(
         lambda: {
             "scheduled": 0, "realised": 0, "cancelled": 0, "delayed": 0,
+            "future_scheduled": 0, "future_cancelled": 0, "future_delayed": 0,
             "transport_mode": "",
             "pax_realised": 0.0, "pax_displaced": 0.0,
             "occupancy_known_realised": 0, "occupancy_unknown_realised": 0,
@@ -243,6 +244,8 @@ def analyse(
             q_lines.add(line_code)
             line_bucket = by_line_acc[line_code]
             line_bucket["scheduled"] += 1
+            if not is_past:
+                line_bucket["future_scheduled"] += 1
             if not line_bucket["transport_mode"]:
                 line_bucket["transport_mode"] = mode
 
@@ -257,6 +260,7 @@ def analyse(
                     past_cancelled += 1
                 else:
                     future_cancelled += 1
+                    line_bucket["future_cancelled"] += 1
             else:
                 # Delays are known for both halves (observed or predicted).
                 delay = _minutes_between(_call_aimed(call), _call_expected(call))
@@ -270,6 +274,7 @@ def analyse(
                             past_delayed += 1
                         else:
                             future_delayed += 1
+                            line_bucket["future_delayed"] += 1
                     (delays_past if is_past else delays_future).append(delay)
 
                 # Realised ("kjørt") only exists once the departure has passed.
@@ -368,6 +373,9 @@ def analyse(
             "realised": b["realised"],
             "cancelled": b["cancelled"],
             "delayed_gt_3min": b["delayed"],
+            "future_scheduled": b["future_scheduled"],
+            "future_cancelled": b["future_cancelled"],
+            "future_delayed_gt_3min": b["future_delayed"],
         })
 
     median_past, p90_past = _delay_percentiles(delays_past)

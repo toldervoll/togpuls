@@ -54,11 +54,25 @@ function buildPerLineSituations(sits) {
     });
 }
 
+// Effective risk rank for a situation: the alert tier wins over SIRI severity
+// (mirrors riskTier() in renderSituations), so a low-severity message that the
+// backend elevated still sorts and represents its event as high.
+function effSevRank(s) {
+  const tier = s.estimate?.alert?.alert_tier?.toLowerCase();
+  const sev = tier === "high" ? "hoy"
+    : tier === "medium" ? "middels"
+    : (s.severity || "ukjent");
+  return SEVERITY_RANK[sev] ?? 99;
+}
+
+// Group messages by event (backend event_id), falling back to identical text.
+// Several SX messages about one incident — e.g. "Innstilt" + "Ta neste tog" —
+// collapse into a single card represented by its worst member.
 function groupSituations(sits) {
   const groups = new Map();
   for (const s of sits) {
     const text = s.summary || s.description || "(no text)";
-    const key = text;
+    const key = s.event_id || text;
     let g = groups.get(key);
     if (!g) {
       g = {
@@ -66,29 +80,37 @@ function groupSituations(sits) {
         severity: s.severity || "ukjent",
         lines: new Set(),
         quays: new Set(),
+        texts: new Set(),
         count: 0,
         estimate: null,
+        rank: 99,
       };
       groups.set(key, g);
     }
     g.count += 1;
-    if (g.estimate == null && s.estimate != null) g.estimate = s.estimate;
+    if (text) g.texts.add(text);
     for (const l of s.paavirker_linjer || []) g.lines.add(l);
     for (const q of s.paavirker_quays || []) g.quays.add(q);
-    const cur = SEVERITY_RANK[g.severity] ?? 99;
-    const inc = SEVERITY_RANK[s.severity] ?? 99;
-    if (inc < cur) g.severity = s.severity;
+    // The worst member represents the event: its text, severity and estimate.
+    const r = effSevRank(s);
+    if (r < g.rank) {
+      g.rank = r;
+      g.text = text;
+      g.severity = s.severity || "ukjent";
+      if (s.estimate != null) g.estimate = s.estimate;
+    } else if (g.estimate == null && s.estimate != null) {
+      g.estimate = s.estimate;
+    }
   }
   return Array.from(groups.values())
     .map((g) => ({
       ...g,
       lines: Array.from(g.lines).sort(),
       quays: Array.from(g.quays).sort(),
+      texts: Array.from(g.texts),
     }))
     .sort((a, b) => {
-      const sa = SEVERITY_RANK[a.severity] ?? 99;
-      const sb = SEVERITY_RANK[b.severity] ?? 99;
-      if (sa !== sb) return sa - sb;
+      if (a.rank !== b.rank) return a.rank - b.rank;
       return b.count - a.count;
     });
 }
@@ -230,6 +252,8 @@ const LED_SEGMENTS = 5;
 const LED_HTML = "<i></i>".repeat(LED_SEGMENTS);
 // Display scale: a rate at/above this lights the whole meter. Exact value is
 // always in the tooltip — the LEDs are a glanceable relative indicator.
+// The backend floors the tier word to these same anchors (_tier_from_rates in
+// api/app.py) so the bars and the tier can never disagree — keep them in sync.
 const CANCEL_RATE_FULL = 0.1; // 10% cancellations
 const TROUBLE_RATE_FULL = 0.3; // 30% trouble
 const TIER_SEV = { low: "lav", medium: "middels", high: "hoy" };
@@ -517,11 +541,16 @@ function renderSituations(sits) {
             <div class="sit-meta">
               <div class="sit-estimate"></div>
             </div>
+            <div class="sit-members"></div>
             <div class="sit-lines"></div>
           </div>
         </div>
         ${countBadge}`;
       li.querySelector(".sit-text").textContent = g.text;
+      const others = (g.texts || []).filter((x) => x !== g.text);
+      li.querySelector(".sit-members").textContent = others.length
+        ? t("sit_also_prefix", { texts: others.join(" · ") })
+        : "";
       li.querySelector(".sit-lines").textContent = lines ? t("sit_lines_prefix", { lines }) : "";
       applyAlert(li, sev, g.estimate);
       applyEstimate(li, g.estimate);
@@ -740,8 +769,17 @@ function buildSummary(d) {
   const pastSched = pastS.scheduled ?? tm.past_scheduled ?? 0;
   const futSched = futS.scheduled ?? tm.future_scheduled ?? 0;
   const futExpected = futSched - (futS.cancelled || 0);
-  const sevHigh = sits.filter((s) => s.severity === "hoy").length;
-  const sevMid = sits.filter((s) => s.severity === "middels").length;
+  // Count situations the way the panel shows them: collapsed into events, with
+  // the tier (not raw SIRI severity) deciding high/medium — so the prose count
+  // matches the cards after clustering and supersession.
+  const sitGroups = groupSituations(sits);
+  const groupCount = sitGroups.length;
+  const groupSev = (g) => {
+    const tier = g.estimate?.alert?.alert_tier?.toLowerCase();
+    return tier === "high" ? "hoy" : tier === "medium" ? "middels" : (g.severity || "ukjent");
+  };
+  const sevHigh = sitGroups.filter((g) => groupSev(g) === "hoy").length;
+  const sevMid = sitGroups.filter((g) => groupSev(g) === "middels").length;
   const minorOnly = sevHigh === 0 && sevMid === 0;
 
   const where = toName
@@ -840,7 +878,7 @@ function buildSummary(d) {
   }
 
   // Sentence 2: situations
-  if (sits.length === 0) {
+  if (groupCount === 0) {
     // Clean traffic already implies it; only worth saying when degraded.
     if (!trafficClean && tm.scheduled > 0) {
       sentences.push(t("no_active_situations"));
@@ -848,8 +886,8 @@ function buildSummary(d) {
   } else if (trafficClean && minorOnly) {
     // Small disturbance, trains all on plan: one short note, no figures.
     const affLines = pax.affected_lines || [];
-    sentences.push(tp("summary_sit_minor", sits.length, {
-      count: sits.length,
+    sentences.push(tp("summary_sit_minor", groupCount, {
+      count: groupCount,
       lines: tp("lines_count", affLines.length),
     }));
   } else {
@@ -862,8 +900,8 @@ function buildSummary(d) {
     const sevTxt = sevParts.length
       ? t("summary_sit_sev_wrap", { parts: sevParts.join(", ") })
       : "";
-    let s = tp("summary_sit", sits.length, {
-      count: sits.length,
+    let s = tp("summary_sit", groupCount, {
+      count: groupCount,
       sev: sevTxt,
       lines: tp("lines_count", affLines.length),
       aff,
