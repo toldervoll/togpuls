@@ -5,6 +5,45 @@ from __future__ import annotations
 from typing import TypedDict
 
 
+class DisruptionEstimate(TypedDict, total=False):
+    point_min_from_now: int
+    p50_min_from_now: int
+    p80_min_from_now: int
+    p90_min_from_now: int
+    overdue: bool
+
+
+class DisruptionAlertProfile(TypedDict, total=False):
+    grain: str
+    matched_category: str
+    matched_line: str
+    matched_hour: int
+    alert_tier: str
+    alert_score: float
+    cancel_rate: float
+    trouble_rate: float
+    trouble_lift: float | None
+    exp_disruption_min: float
+    delay_p50: int | None
+    delay_p90: int | None
+    n_situations: int
+    n_boardings: int
+
+
+class DisruptionEnrichment(TypedDict, total=False):
+    category: str
+    onset: str
+    minutes_since_onset: int
+    reopened: bool
+    reopened_at: str | None
+    minutes_since_reopen: int | None
+    num_affected_stops: int
+    declared_window_min: int | None
+    reopen: DisruptionEstimate
+    impact: DisruptionEstimate
+    alert: DisruptionAlertProfile | None
+
+
 class Window(TypedDict):
     fra: str
     til: str
@@ -31,6 +70,7 @@ class Situation(TypedDict, total=False):
     valid_to: str
     paavirker_linjer: list[str]
     paavirker_quays: list[str]
+    disruption: DisruptionEnrichment
 
 
 class LineMovement(TypedDict):

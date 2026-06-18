@@ -183,6 +183,23 @@ const I18N_STRINGS = {
     ),
     "summary_sit_displaced": ", og ~{n} til fikk toget sitt kansellert og må finne et alternativ",
 
+    // Disruption enrichment chips and detail
+    "sit_alert_tier.high":      "HØY RISIKO",
+    "sit_alert_tier.medium":    "MIDDELS RISIKO",
+    "sit_alert_tier.low":       "LAV RISIKO",
+    "sit_reopen_eta":           "Åpner ~{mins} min",
+    "sit_reopen_overdue":       "Forsinket åpning",
+    "sit_impact":               "~{mins} min tap",
+    "sit_show_history":         "Vis historikk",
+    "sit_hist_cancel_rate":     "Kansellert",
+    "sit_hist_trouble_rate":    "Avvik",
+    "sit_hist_delay_p50":       "Forsinkelse p50",
+    "sit_hist_delay_p90":       "Forsinkelse p90",
+    "sit_hist_exp_disruption":  "Forv. taptid",
+    "sit_hist_n_situations":    "Hist. tilfeller",
+    "sit_hist_reopen_spread":   "Åpner (p80/p90)",
+    "sit_hist_impact_spread":   "Konsekvens (p80/p90)",
+
     "footer": "togpuls · data: Entur Journey Planner v3 · oppdatering hver 30 s · buffer 20 s",
   },
 
@@ -348,6 +365,23 @@ const I18N_STRINGS = {
       "~{aff} passengers are currently riding on disrupted lines"
     ),
     "summary_sit_displaced": ", and ~{n} more had their train cancelled and need to find an alternative",
+
+    // Disruption enrichment chips and detail
+    "sit_alert_tier.high":      "HIGH RISK",
+    "sit_alert_tier.medium":    "MEDIUM RISK",
+    "sit_alert_tier.low":       "LOW RISK",
+    "sit_reopen_eta":           "Reopens ~{mins} min",
+    "sit_reopen_overdue":       "Overdue reopening",
+    "sit_impact":               "~{mins} min impact",
+    "sit_show_history":         "Show history",
+    "sit_hist_cancel_rate":     "Cancelled",
+    "sit_hist_trouble_rate":    "Trouble rate",
+    "sit_hist_delay_p50":       "Delay p50",
+    "sit_hist_delay_p90":       "Delay p90",
+    "sit_hist_exp_disruption":  "Exp. lost time",
+    "sit_hist_n_situations":    "Hist. incidents",
+    "sit_hist_reopen_spread":   "Reopen (p80/p90)",
+    "sit_hist_impact_spread":   "Impact (p80/p90)",
 
     "footer": "togpuls · data: Entur Journey Planner v3 · refresh every 30 s · buffer 20 s",
   },

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -15,14 +16,18 @@ from fastapi.staticfiles import StaticFiles
 
 from togpuls.analysis import analyse, build_timeline
 from togpuls.api.cache import TTLCache
+from togpuls.clients.disruptions import fetch_disruptions
 from togpuls.clients.journey_planner import query_stop_place_departures
 from togpuls.models import Analysis
+
+_logger = logging.getLogger(__name__)
 
 DEFAULT_STOP_PLACE_ID = "NSR:StopPlace:337"  # Oslo S
 DEFAULT_HORIZON_MIN = 90
 TIMELINE_SPAN_MIN = 90
 TIMELINE_BUCKET_MIN = 5
 CACHE_TTL_SECONDS = 20.0
+DISRUPTIONS_CACHE_TTL_SECONDS = 60.0
 
 # Common stations — IDs taken from the IDs that the Journey Planner actually
 # emits in `serviceJourney.quays[].stopPlace.id` (the Entur geocoder returns
@@ -44,6 +49,7 @@ COMMON_STATIONS: dict[str, str] = {
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
 _cache = TTLCache(ttl_seconds=CACHE_TTL_SECONDS)
+_disruptions_cache = TTLCache(ttl_seconds=DISRUPTIONS_CACHE_TTL_SECONDS)
 
 
 @asynccontextmanager
@@ -134,6 +140,26 @@ async def _compute_analysis(
         bucket_min=TIMELINE_BUCKET_MIN,
         to_stop_place_id=to_stop_place_id,
     )
+
+    # Enrich situations with disruption data — best-effort, never 502.
+    try:
+        disruptions_data = await _disruptions_cache.get_or_compute(
+            (),
+            lambda: fetch_disruptions(client=client),
+        )
+        by_number = {
+            d["situation_number"]: d
+            for d in disruptions_data.get("disruptions", [])
+            if d.get("situation_number")
+        }
+        if by_number:
+            for sit in analysis.get("situations", []):
+                sn = sit.get("situation_number")
+                if sn and sn in by_number:
+                    sit["disruption"] = by_number[sn]
+    except Exception:
+        _logger.warning("Disruptions enrichment failed", exc_info=True)
+
     return analysis
 
 
@@ -155,6 +181,18 @@ async def service_worker() -> FileResponse:
 @app.get("/api/v1/health")
 async def health() -> dict:
     return {"ok": True}
+
+
+@app.get("/api/v1/disruptions")
+async def disruptions() -> dict:
+    client: httpx.AsyncClient = app.state.http_client
+    try:
+        return await _disruptions_cache.get_or_compute(
+            (),
+            lambda: fetch_disruptions(client=client),
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Disruptions upstream error: {exc}") from exc
 
 
 @app.get("/api/v1/stations")
