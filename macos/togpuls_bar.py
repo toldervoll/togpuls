@@ -158,6 +158,10 @@ class TogpulsBar(rumps.App):
         ]
         self.menu.clear()
         self.menu.update(items)
+        # Statuslinjene har ingen action; med auto-enabling (standard) tegner
+        # macOS dem dempet/grå (lav kontrast, vanskelig å lese). Skru det av så
+        # alle linjer vises i full labelColor — tilpasser seg lys/mørk modus.
+        self.menu._menu.setAutoenablesItems_(False)
 
     def _status_lines(self, d):
         tm = d.get("train_movements", {}) or {}
