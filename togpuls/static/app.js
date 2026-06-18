@@ -413,8 +413,8 @@ function renderSituations(sits) {
           </div>
           <div class="sit-content">
             <div class="sit-text"></div>
-            <div class="sit-lines"></div>
             <div class="sit-estimate"></div>
+            <div class="sit-lines"></div>
           </div>
         </div>
         ${countBadge}`;
@@ -440,8 +440,8 @@ function renderSituations(sits) {
           </div>
           <div class="sit-content">
             <div class="sit-text"></div>
-            <div class="sit-lines"></div>
             <div class="sit-estimate"></div>
+            <div class="sit-lines"></div>
           </div>
         </div>
         ${countBadge}`;
