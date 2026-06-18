@@ -985,7 +985,7 @@ h2 {
   top: calc(100% + 8px);
   right: 0;
   z-index: 10;
-  min-width: 180px;
+  min-width: 240px;
   padding: 9px 11px;
   background: var(--console-bg-2);
   border: 1px solid var(--console-edge-2);
@@ -1001,8 +1001,8 @@ h2 {
   grid-template-columns: auto auto;
   gap: 3px 16px;
 }
-.sit-hist-label { color: var(--console-text-2, var(--text-muted)); }
-.sit-hist-value { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.sit-hist-label { color: var(--console-text-2, var(--text-muted)); white-space: nowrap; }
+.sit-hist-value { font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .sit-count-badge {
   background: var(--surface-3);
   color: var(--accent);
