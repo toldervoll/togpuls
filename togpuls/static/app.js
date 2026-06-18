@@ -157,6 +157,53 @@ function applyEstimate(li, est) {
   if (tip) el.title = tip;
 }
 
+// Populate the .sit-detail collapsible with historical profile rows from
+// estimate.alert + estimate.reopen/impact. Hidden when the estimate only has
+// the two rates already shown as LED meters (fallback path).
+function applyHistory(li, est) {
+  const el = li.querySelector(".sit-detail");
+  if (!el) return;
+  const alert = est && typeof est === "object" ? est.alert : null;
+  const reopen = est && typeof est === "object" ? est.reopen : null;
+  const impact = est && typeof est === "object" ? est.impact : null;
+
+  const spread = (blk) => {
+    if (!blk) return null;
+    const p80 = typeof blk.p80_min_from_now === "number" ? fmtDurationMin(blk.p80_min_from_now) : null;
+    const p90 = typeof blk.p90_min_from_now === "number" ? fmtDurationMin(blk.p90_min_from_now) : null;
+    return p80 && p90 ? `~${p80} / ~${p90}` : (p80 || p90 || null);
+  };
+
+  const rows = [
+    ["sit_hist_cancel_rate",    alert && typeof alert.cancel_rate    === "number" ? fmtRate(alert.cancel_rate)    : null],
+    ["sit_hist_trouble_rate",   alert && typeof alert.trouble_rate   === "number" ? fmtRate(alert.trouble_rate)   : null],
+    ["sit_hist_trouble_lift",   alert && typeof alert.trouble_lift   === "number" ? fmtRate(alert.trouble_lift)   : null],
+    ["sit_hist_delay_p50",      alert && typeof alert.delay_p50      === "number" ? fmtDurationMin(alert.delay_p50)      : null],
+    ["sit_hist_delay_p90",      alert && typeof alert.delay_p90      === "number" ? fmtDurationMin(alert.delay_p90)      : null],
+    ["sit_hist_exp_disruption", alert && typeof alert.exp_disruption_min === "number" ? fmtDurationMin(alert.exp_disruption_min) : null],
+    ["sit_hist_n_situations",   alert && typeof alert.n_situations   === "number" ? String(alert.n_situations)    : null],
+    ["sit_hist_reopen_spread",  spread(reopen)],
+    ["sit_hist_impact_spread",  spread(impact)],
+  ].filter(([, v]) => v !== null);
+
+  if (!rows.length) return;
+
+  el.querySelector("summary").textContent = t("sit_show_history");
+  const grid = el.querySelector(".sit-detail-grid");
+  grid.replaceChildren();
+  for (const [key, val] of rows) {
+    const label = document.createElement("span");
+    label.className = "sit-hist-label";
+    label.textContent = t(key);
+    const value = document.createElement("span");
+    value.className = "sit-hist-value";
+    value.textContent = val;
+    grid.appendChild(label);
+    grid.appendChild(value);
+  }
+  el.hidden = false;
+}
+
 // ── Alert metrics (estimate.alert) ──────────────────────────────────────
 // The estimate service returns an `alert` block with a risk tier and two
 // base rates. The tier replaces the SIRI severity word in the left chip;
@@ -413,7 +460,10 @@ function renderSituations(sits) {
           </div>
           <div class="sit-content">
             <div class="sit-text"></div>
-            <div class="sit-estimate"></div>
+            <div class="sit-meta">
+              <div class="sit-estimate"></div>
+              <details class="sit-detail" hidden><summary></summary><div class="sit-detail-grid"></div></details>
+            </div>
             <div class="sit-lines"></div>
           </div>
         </div>
@@ -422,6 +472,7 @@ function renderSituations(sits) {
       li.querySelector(".sit-lines").textContent = r.texts.join(" · ");
       applyAlert(li, sev, r.estimate);
       applyEstimate(li, r.estimate);
+      applyHistory(li, r.estimate);
       ul.appendChild(li);
     }
   } else {
@@ -440,7 +491,10 @@ function renderSituations(sits) {
           </div>
           <div class="sit-content">
             <div class="sit-text"></div>
-            <div class="sit-estimate"></div>
+            <div class="sit-meta">
+              <div class="sit-estimate"></div>
+              <details class="sit-detail" hidden><summary></summary><div class="sit-detail-grid"></div></details>
+            </div>
             <div class="sit-lines"></div>
           </div>
         </div>
@@ -449,6 +503,7 @@ function renderSituations(sits) {
       li.querySelector(".sit-lines").textContent = lines ? t("sit_lines_prefix", { lines }) : "";
       applyAlert(li, sev, g.estimate);
       applyEstimate(li, g.estimate);
+      applyHistory(li, g.estimate);
       ul.appendChild(li);
     }
   }
