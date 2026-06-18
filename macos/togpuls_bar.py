@@ -210,9 +210,11 @@ class TogpulsBar(rumps.App):
         lines.append("")
         lines.append(f"Situasjoner: {len(sits)} ({high} høy risiko)")
         for s in ranked[:5]:
-            tier = self._tier(s)
-            mark = TIER_DOT.get(tier, "▪︎")
+            mark = TIER_DOT.get(self._tier(s), "▪︎")
             lines.append(f"   {mark} {(s.get('summary') or '').strip()[:46]}")
+            detail = self._situation_detail(s)
+            if detail:
+                lines.append(f"        {detail[:52]}")
 
         lines.append("")
         lines.append(f"Sist oppdatert {datetime.now():%H:%M:%S}")
@@ -266,6 +268,21 @@ class TogpulsBar(rumps.App):
         return ""
 
     # ---- situasjoner ---------------------------------------------------
+
+    @staticmethod
+    def _situation_detail(s):
+        """Underlinje: berørte linjer + årsak (cause_text, ellers kategori)."""
+        parts = []
+        linjer = s.get("paavirker_linjer") or []
+        if linjer:
+            shown = ", ".join(linjer[:4])
+            if len(linjer) > 4:
+                shown += f" +{len(linjer) - 4}"
+            parts.append(shown)
+        cause = (s.get("cause_text") or "").strip() or (s.get("cause_code") or "").strip()
+        if cause:
+            parts.append(cause)
+        return " · ".join(parts)
 
     @staticmethod
     def _tier(situation):

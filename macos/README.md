@@ -64,7 +64,8 @@ og **Til**), som fylles fra `/api/v1/stations`. Velg `Alle avganger` under
 
 - **Neste avganger** — tid, linje, destinasjon og status (i rute / +N min / innstilt)
 - **Avvik** — antall innstilte og forsinkede (>3 min) i tidsvinduet
-- **Situasjoner** — antall, hvor mange med høy risiko, og de viktigste først
+- **Situasjoner** — antall, hvor mange med høy risiko, og de viktigste først,
+  med berørte linjer og årsak per situasjon
 - Tidspunkt for siste oppdatering
 
 Data hentes fra `GET /api/v1/analysis/{from}[/to/{to}]?horizon_min=…` (åpent API,
