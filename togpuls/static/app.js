@@ -963,6 +963,21 @@ function render(d) {
   // Situations
   renderSituations(d.situations || []);
 
+  // Drive the summary card border colour from the highest active risk tier.
+  const _TIER_RANK = { high: 0, medium: 1, low: 2 };
+  let topTier = null;
+  for (const sit of d.situations || []) {
+    const tier = sit.estimate?.alert?.alert_tier?.toLowerCase();
+    if (tier && _TIER_RANK[tier] !== undefined) {
+      if (topTier === null || _TIER_RANK[tier] < _TIER_RANK[topTier]) topTier = tier;
+    }
+  }
+  const summarySection = document.querySelector("section.summary");
+  if (summarySection) {
+    summarySection.classList.remove("tier-high", "tier-medium", "tier-low");
+    if (topTier) summarySection.classList.add(`tier-${topTier}`);
+  }
+
   // Platforms — exception-only: rows just for disrupted platforms
   const allPlats = d.platform_utilization || [];
   const plats = allPlats

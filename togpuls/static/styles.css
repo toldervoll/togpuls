@@ -804,7 +804,10 @@ h2 {
 .summary {
   border-left: 4px solid var(--signal-blue);
   padding-left: var(--space-lg);
+  transition: border-left-color 0.3s;
 }
+.summary.tier-high   { border-left-color: var(--sev-hoy); }
+.summary.tier-medium { border-left-color: var(--sev-middels); }
 .summary-text {
   margin: 0;
   font-size: clamp(1rem, 2vw, 1.25rem);
