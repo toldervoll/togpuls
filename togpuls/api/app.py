@@ -142,32 +142,51 @@ async def _compute_analysis(
         to_stop_place_id=to_stop_place_id,
     )
 
-    # Fallback enrichment for situations the KIX service didn't cover (estimate
-    # is None). Derives cancel_rate and trouble_rate from the current window's
-    # train_movements.by_line so the LED meters still render. alert_tier is
-    # intentionally omitted — it duplicates the severity label already on the
-    # card. impact is omitted — we have no historical distribution to estimate
-    # when the situation will clear.
-    _SEVERITY_SCORE = {"hoy": 1.0, "middels": 0.5, "lav": 0.2}
+    # Real-time tier derivation and fallback enrichment.
+    #
+    # For situations WITHOUT a KIX estimate: derive cancel_rate / trouble_rate
+    # and a real-time alert_tier from train_movements.by_line so the LED meters
+    # and tier label both render from current data.
+    #
+    # For situations WITH a KIX estimate: elevate the KIX alert_tier when the
+    # real-time cancel_rate is worse than the historical norm implies. KIX tier
+    # is a historical baseline; active cancellations on affected lines should
+    # never show as lower risk than what is actually happening.
+    _TIER_RANK = {"high": 0, "medium": 1, "low": 2}
+
+    def _realtime_tier(cancel_rate: float) -> str | None:
+        if cancel_rate >= 0.3:
+            return "high"
+        if cancel_rate > 0:
+            return "medium"
+        return None
+
     by_line = {
         lm["linje"]: lm
         for lm in analysis.get("train_movements", {}).get("by_line", [])
     }
     for sit in analysis.get("situations", []):
-        if sit.get("estimate") is not None:
-            continue
-        if sit.get("severity", "") not in _SEVERITY_SCORE:
-            continue
         affected = [l for l in sit.get("paavirker_linjer", []) if l in by_line]
         scheduled = sum(by_line[l]["scheduled"] for l in affected)
         if not scheduled:
             continue
         cancelled = sum(by_line[l]["cancelled"] for l in affected)
         delayed = sum(by_line[l]["delayed_gt_3min"] for l in affected)
-        sit["estimate"] = {"alert": {
-            "cancel_rate": cancelled / scheduled,
-            "trouble_rate": (cancelled + delayed) / scheduled,
-        }}
+        cancel_rate = cancelled / scheduled
+        trouble_rate = (cancelled + delayed) / scheduled
+        rt_tier = _realtime_tier(cancel_rate)
+
+        if sit.get("estimate") is None:
+            alert: dict = {"cancel_rate": cancel_rate, "trouble_rate": trouble_rate}
+            if rt_tier:
+                alert["alert_tier"] = rt_tier
+            sit["estimate"] = {"alert": alert}
+        elif rt_tier:
+            # Elevate KIX tier if real-time data is worse.
+            alert = (sit["estimate"] or {}).get("alert") or {}
+            cur_tier = (alert.get("alert_tier") or "").lower()
+            if _TIER_RANK.get(rt_tier, 99) < _TIER_RANK.get(cur_tier, 99):
+                alert["alert_tier"] = rt_tier
 
     return analysis
 
