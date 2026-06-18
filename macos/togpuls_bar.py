@@ -32,6 +32,12 @@ TIER_DOT = {"high": "🔴", "medium": "🟡", "low": "🟢"}
 TIER_RANK = {"high": 3, "medium": 2, "low": 1}
 ALL_LABEL = "Alle avganger"
 
+# Dashbordet speiler ruten i URL-hash: #<fra>-<til> (kun tallet i NSR-id-en),
+# #<fra> for kun fra-stasjon, og ingen hash for Oslo S uten retning (jf.
+# syncUrl() i static/app.js). Vi bygger samme hash for «Åpne dashbord».
+STOP_PLACE_PREFIX = "NSR:StopPlace:"
+DASHBOARD_DEFAULT_FROM = "NSR:StopPlace:337"  # Oslo S — URL holdes ren her
+
 # Zero-width space — gjør ellers like menytitler unike så rumps ikke slår dem sammen.
 ZWS = "​"
 
@@ -120,7 +126,19 @@ class TogpulsBar(rumps.App):
         return cb
 
     def open_dashboard(self, _):
-        webbrowser.open(BASE_URL)
+        webbrowser.open(self._dashboard_url())
+
+    def _dashboard_url(self):
+        """Speil valgt stasjonspar i URL-hash, likt syncUrl() i app.js."""
+        def short(sid):
+            return sid[len(STOP_PLACE_PREFIX):] if sid and sid.startswith(
+                STOP_PLACE_PREFIX) else sid
+
+        if self.to_id:
+            return f"{BASE_URL}/#{short(self.from_id)}-{short(self.to_id)}"
+        if self.from_id and self.from_id != DASHBOARD_DEFAULT_FROM:
+            return f"{BASE_URL}/#{short(self.from_id)}"
+        return BASE_URL
 
     # ---- datahenting + rendering --------------------------------------
 
