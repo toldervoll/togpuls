@@ -75,12 +75,14 @@ def _worse(*tiers: str | None) -> str | None:
     return min(cands, key=lambda t: _TIER_RANK.get(t, 99))
 
 
-# ── Event clustering ───────────────────────────────────────────────────────
-# Two SX messages belong to the same underlying event when their affected lines
-# overlap and their KIX onsets are within this window. BaneNOR issues several
-# messages per incident (e.g. a cancellation plus "take the next train" advice)
-# seconds apart, so onset proximity is a strong, language-independent key.
-ONSET_CLUSTER_MIN = 20
+# ── Event clustering / supersession ─────────────────────────────────────────
+# Sibling messages of one incident (e.g. a cancellation plus its "take the next
+# train" advice) are issued seconds apart, so a tight onset window groups them
+# without chaining unrelated incidents that merely share a busy trunk line.
+SIBLING_ONSET_MIN = 5
+# An all-clear may arrive well after the incident it resolves; allow this gap
+# between their onsets when deciding what it supersedes.
+RESOLVE_ONSET_MIN = 120
 
 # An "all clear" / normalisation message. Used (with reportType=general) to
 # detect that an event is being resolved. Substring match across no/en phrasing.
@@ -112,13 +114,70 @@ def _is_all_clear(sit: dict) -> bool:
     return bool(_ALL_CLEAR_RX.search(text))
 
 
-def _cluster_and_resolve(situations: list[dict], by_line: dict) -> list[dict]:
-    """Group messages into events, drop resolved events, tag survivors.
+def _forward_recovered(lines: set[str], by_line: dict) -> bool:
+    """True when the given lines show no medium+ disruption in the forward window."""
+    relevant = [l for l in lines if l in by_line]
+    fwd_scheduled = sum(by_line[l]["future_scheduled"] for l in relevant)
+    if not fwd_scheduled:
+        return True  # nothing scheduled ahead → nothing left to disrupt
+    fwd_cancelled = sum(by_line[l]["future_cancelled"] for l in relevant)
+    fwd_delayed = sum(by_line[l]["future_delayed_gt_3min"] for l in relevant)
+    return _tier_from_rates(
+        fwd_cancelled / fwd_scheduled,
+        (fwd_cancelled + fwd_delayed) / fwd_scheduled,
+    ) is None
 
-    Clusters situations into events (overlapping lines + nearby onset, or
-    identical summary text), hides events that an all-clear plus live forward
-    recovery confirm are over, and stamps each surviving situation with an
-    `event_id` so the frontend can show one card per event.
+
+def _resolve_superseded(situations: list[dict], by_line: dict) -> list[dict]:
+    """Drop situations an all-clear has resolved (supersession), decoupled from
+    clustering.
+
+    An all-clear is "confirmed" when live forward data shows its own lines have
+    recovered. A confirmed all-clear hides itself and any situation whose lines
+    are a *subset* of its lines (so a trunk-line all-clear can't sweep away
+    unrelated incidents), gated by onset proximity and the incident's own
+    forward recovery.
+    """
+    confirmed = []
+    for s in situations:
+        if not _is_all_clear(s):
+            continue
+        lines = set(s.get("paavirker_linjer") or [])
+        if lines and _forward_recovered(lines, by_line):
+            confirmed.append((id(s), lines, _parse_onset(s.get("estimate"))))
+    if not confirmed:
+        return situations
+
+    confirmed_ids = {cid for cid, _, _ in confirmed}
+    tol = RESOLVE_ONSET_MIN * 60
+    keep = []
+    for s in situations:
+        if id(s) in confirmed_ids:
+            continue  # the confirmed all-clear itself is resolved info — hide it
+        s_lines = set(s.get("paavirker_linjer") or [])
+        s_onset = _parse_onset(s.get("estimate"))
+        drop = False
+        for _, ac_lines, ac_onset in confirmed:
+            if not s_lines or not s_lines.issubset(ac_lines):
+                continue
+            if s_onset and ac_onset and abs((s_onset - ac_onset).total_seconds()) > tol:
+                continue
+            if not _forward_recovered(s_lines, by_line):
+                continue
+            drop = True
+            break
+        if not drop:
+            keep.append(s)
+    return keep
+
+
+def _cluster_situations(situations: list[dict]) -> list[dict]:
+    """Tag each situation with an `event_id` grouping sibling messages.
+
+    Conservative on purpose: merge only identical summaries, or messages that
+    overlap on lines AND share a reportType AND were issued within a tight onset
+    window — the signature of one incident's sibling messages. This avoids
+    chaining unrelated incidents that merely share a busy trunk line.
     """
     n = len(situations)
     if n == 0:
@@ -139,55 +198,43 @@ def _cluster_and_resolve(situations: list[dict], by_line: dict) -> list[dict]:
 
     info = []
     for s in situations:
-        lines = {l for l in (s.get("paavirker_linjer") or [])}
-        onset = _parse_onset(s.get("estimate"))
-        summary = (s.get("summary") or "").strip().casefold()
-        info.append((lines, onset, summary))
+        info.append((
+            set(s.get("paavirker_linjer") or []),
+            _parse_onset(s.get("estimate")),
+            (s.get("summary") or "").strip().casefold(),
+            (s.get("report_type") or "").lower(),
+        ))
 
-    tol = ONSET_CLUSTER_MIN * 60
+    tol = SIBLING_ONSET_MIN * 60
     for i in range(n):
-        li, oi, si = info[i]
+        li, oi, si, ri = info[i]
         for j in range(i + 1, n):
-            lj, oj, sj = info[j]
-            if si and si == sj:  # Edge B: identical summary text
+            lj, oj, sj, rj = info[j]
+            if si and si == sj:  # identical summary text
                 union(i, j)
-            elif li & lj and oi and oj and abs((oi - oj).total_seconds()) <= tol:
-                union(i, j)  # Edge A: overlapping lines + nearby onset
+            elif (
+                li & lj and ri == rj and oi and oj
+                and abs((oi - oj).total_seconds()) <= tol
+            ):  # sibling: shared lines + same type + issued together
+                union(i, j)
 
     clusters: dict[int, list[int]] = defaultdict(list)
     for i in range(n):
         clusters[find(i)].append(i)
-
-    resolved_idx: set[int] = set()
     for members in clusters.values():
-        member_sits = [situations[i] for i in members]
-        ev_lines = {
-            l
-            for s in member_sits
-            for l in (s.get("paavirker_linjer") or [])
-            if l in by_line
-        }
-        fwd_scheduled = sum(by_line[l]["future_scheduled"] for l in ev_lines)
-        fwd_tier = None
-        if fwd_scheduled:
-            fwd_cancelled = sum(by_line[l]["future_cancelled"] for l in ev_lines)
-            fwd_delayed = sum(by_line[l]["future_delayed_gt_3min"] for l in ev_lines)
-            fwd_tier = _tier_from_rates(
-                fwd_cancelled / fwd_scheduled,
-                (fwd_cancelled + fwd_delayed) / fwd_scheduled,
-            )
-        recovered = fwd_tier is None
-        has_all_clear = any(_is_all_clear(s) for s in member_sits)
-
         event_id = min(
-            (s.get("situation_number") or s.get("id") or "") for s in member_sits
+            (situations[i].get("situation_number") or situations[i].get("id") or "")
+            for i in members
         )
         for i in members:
             situations[i]["event_id"] = event_id
-        if has_all_clear and recovered:
-            resolved_idx.update(members)
+    return situations
 
-    return [s for i, s in enumerate(situations) if i not in resolved_idx]
+
+def _cluster_and_resolve(situations: list[dict], by_line: dict) -> list[dict]:
+    """Supersession then clustering: hide what an all-clear resolved, then group
+    the survivors' sibling messages and tag them with an event_id."""
+    return _cluster_situations(_resolve_superseded(situations, by_line))
 
 
 def _recompute_affected(analysis: dict) -> None:
