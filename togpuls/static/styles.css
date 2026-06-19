@@ -399,8 +399,13 @@ h2 {
   top: calc(100% + 4px);
   left: 0;
   min-width: 100%;
+  /* Bounded so a full list never overflows the viewport, but the scrollbar
+     chrome is hidden — this is a search field, so scrolling is rarely needed
+     (wheel/trackpad/keyboard still work). */
   max-height: 280px;
   overflow-y: auto;
+  scrollbar-width: none;        /* Firefox */
+  -ms-overflow-style: none;     /* legacy Edge */
   margin: 0;
   padding: 4px;
   list-style: none;
@@ -410,6 +415,7 @@ h2 {
   box-shadow: 0 8px 24px rgba(0,0,0,0.28);
   z-index: 50;
 }
+.combo-list::-webkit-scrollbar { width: 0; height: 0; }  /* WebKit/Blink */
 .combo-option {
   position: relative;
   padding: 7px 10px 7px 28px;   /* room for the checkmark column on the left */
