@@ -222,9 +222,17 @@ class TogpulsBar(rumps.App):
         else:
             lines.append("   ingen i tidsvinduet")
 
-        # Avvik (oppsummert)
+        # Avvik — telling (autoritativ, fra train_movements) + liste
         lines.append("")
         lines.append(f"Avvik: {cancelled} innstilt · {delayed} forsinket >3 min")
+        avvik = self._deviations(d)
+        for dep in avvik[:6]:
+            dest = (dep.get("destination") or "")[:16]
+            lines.append(
+                f"   {self._hhmm(dep)} {dep['line']} → {dest}{self._status(dep)}"
+            )
+        if len(avvik) > 6:
+            lines.append("   … og flere")
 
         # Situasjoner — grupper søsken-meldinger per hendelse, som dashbordet
         groups = self._group_situations(sits)
@@ -254,6 +262,29 @@ class TogpulsBar(rumps.App):
                 deps.append(dep)
         deps.sort(key=lambda x: x["_when"])
         return deps
+
+    def _deviations(self, d):
+        """Innstilte og forsinkede (>3 min) avganger i analysevinduet, verste
+        først. Dedupliseres på (linje, destinasjon, tid) — backend gjør det
+        samme — og avgrenses til window for å speile train_movements."""
+        win = (d.get("stop_place") or {}).get("window") or {}
+        fra, til = self._parse(win.get("fra")), self._parse(win.get("til"))
+        seen, out = set(), []
+        for bucket in d.get("timeline", []) or []:
+            for dep in bucket.get("departures") or []:
+                when = self._parse(dep.get("aimed"))
+                if when is None or (fra and til and not fra <= when <= til):
+                    continue
+                key = (dep.get("line"), dep.get("destination"), dep.get("aimed"))
+                if key in seen:
+                    continue
+                seen.add(key)
+                if not dep.get("cancelled") and (dep.get("delay_min") or 0) <= 3:
+                    continue
+                dep["_when"] = when
+                out.append(dep)
+        out.sort(key=lambda x: (not x.get("cancelled"), -(x.get("delay_min") or 0)))
+        return out
 
     @staticmethod
     def _parse(iso):

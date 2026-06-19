@@ -63,7 +63,8 @@ og **Til**), som fylles fra `/api/v1/stations`. Velg `Alle avganger` under
 ## Hva vises i menyen
 
 - **Neste avganger** — tid, linje, destinasjon og status (i rute / +N min / innstilt)
-- **Avvik** — antall innstilte og forsinkede (>3 min) i tidsvinduet
+- **Avvik** — antall innstilte og forsinkede (>3 min), med en liste over de
+  faktiske avgangene (innstilte først, så verste forsinkelser)
 - **Situasjoner** — antall, hvor mange med høy risiko, og de viktigste først,
   med berørte linjer og årsak per situasjon
 - Tidspunkt for siste oppdatering
