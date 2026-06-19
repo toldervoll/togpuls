@@ -881,8 +881,10 @@ h2 {
   flex-direction: column;
   align-items: flex-start;
   gap: 3px;
+  cursor: help;   /* tiles carry an explanatory tooltip */
   transition: opacity 0.2s ease;
 }
+.gauge-wrap { cursor: help; }
 
 /* Signal lamp in each tile corner — off (border-grey) until its metric
    has something to signal */

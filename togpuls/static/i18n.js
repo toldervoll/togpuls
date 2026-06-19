@@ -73,6 +73,13 @@ const I18N_STRINGS = {
     "big_cancelled": "kansellert",
     "big_delayed": "forsinket >3 min",
     "big_p90": "p90-forsinkelse (min)",
+    "tip_util_past": "Andel planlagte tog som faktisk kjørte i tidsvinduet.",
+    "tip_util_future": "Andel kommende tog som forventes å kjøre.",
+    "tip_cancelled": "Antall avganger innstilt i tidsvinduet.",
+    "tip_delayed": "Antall avganger forsinket mer enn 3 minutter.",
+    "tip_p90": "90-persentil: 90 % av togene er mindre forsinket enn dette. Fanger de verste forsinkelsene uten at enkelttilfeller drar opp snittet.",
+    "tip_realised": "Antall avganger som har kjørt (kun historikk).",
+    "tip_scheduled": "Antall planlagte avganger i tidsvinduet.",
 
     // Situations
     "situations_title": "Situasjoner",
@@ -292,6 +299,13 @@ const I18N_STRINGS = {
     "big_cancelled": "cancelled",
     "big_delayed": "delayed >3 min",
     "big_p90": "p90 delay (min)",
+    "tip_util_past": "Share of scheduled trains that actually ran in the window.",
+    "tip_util_future": "Share of upcoming trains expected to run.",
+    "tip_cancelled": "Number of departures cancelled in the window.",
+    "tip_delayed": "Number of departures delayed more than 3 minutes.",
+    "tip_p90": "90th percentile: 90% of trains are delayed less than this. Captures the worst delays without letting outliers skew the average.",
+    "tip_realised": "Number of departures that have run (history only).",
+    "tip_scheduled": "Number of scheduled departures in the window.",
 
     "situations_title": "Situations",
     "no_data": "no data",
