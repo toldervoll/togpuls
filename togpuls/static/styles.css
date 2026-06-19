@@ -314,6 +314,9 @@ h2 {
   gap: var(--space-xs);
   flex-wrap: wrap;
   justify-content: flex-end;
+  /* Stay right-aligned even when wrapped below the brand (where the header's
+     space-between would otherwise left-align a lone second line). */
+  margin-left: auto;
 }
 
 .route {
