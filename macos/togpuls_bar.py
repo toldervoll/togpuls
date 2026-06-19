@@ -195,11 +195,14 @@ class TogpulsBar(rumps.App):
         delayed = tm.get("delayed_gt_3min", 0)
         worst = self._worst_tier(sits)
 
-        # Tittel: neste avgang + status, med risikoprikk fra situasjonsbildet.
+        # Tittel: neste avgang om N min + status, med risikoprikk fra
+        # situasjonsbildet. Minutter til avgang, ikke klokkeslett.
         dot = TIER_DOT.get(worst, "🟢")
         if deps:
             nxt = deps[0]
-            self.title = f"{dot} {nxt['line']} {self._hhmm(nxt)}{self._mark(nxt)}"
+            mins = self._mins_until(nxt)
+            when = "nå" if not mins else f"{mins} min"
+            self.title = f"{dot} {nxt['line']} {when}{self._mark(nxt)}"
         else:
             self.title = f"{dot} 🚆 –"
 
@@ -299,6 +302,14 @@ class TogpulsBar(rumps.App):
     def _hhmm(dep):
         w = dep.get("_when")
         return f"{w:%H:%M}" if w else "--:--"
+
+    @staticmethod
+    def _mins_until(dep):
+        """Hele minutter til (planlagt) avgang; 0 hvis nå/passert."""
+        w = dep.get("_when")
+        if not w:
+            return None
+        return max(0, round((w - datetime.now().astimezone()).total_seconds() / 60))
 
     @staticmethod
     def _mark(dep):
