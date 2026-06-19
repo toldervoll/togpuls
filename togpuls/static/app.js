@@ -493,8 +493,10 @@ function setStale(stale) {
 }
 
 function setLoading(loading) {
-  const badge = $("loading-badge");
-  if (badge) badge.classList.toggle("hidden", !loading);
+  // Spin the reload icon in place rather than showing a separate badge, so the
+  // meta row's layout doesn't shift while refreshing.
+  const btn = $("reload-btn");
+  if (btn) btn.classList.toggle("loading", loading);
 }
 
 
@@ -1661,12 +1663,7 @@ initBigScopeToggle();
 initRoutePicker().then(refresh);
 
 const reloadBtn = $("reload-btn");
-if (reloadBtn) {
-  reloadBtn.addEventListener("click", async () => {
-    reloadBtn.classList.add("loading");
-    try { await refresh(); } finally { reloadBtn.classList.remove("loading"); }
-  });
-}
+if (reloadBtn) reloadBtn.addEventListener("click", () => refresh());  // refresh() spins via setLoading
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
