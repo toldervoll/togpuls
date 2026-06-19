@@ -298,8 +298,9 @@ function applyHistory(li, est, lines, cause) {
 
   const meta = chip.closest(".sit-meta") || chip.parentElement;
   meta.appendChild(tip);
-  chip.addEventListener("mouseenter", () => { tip.hidden = false; });
-  meta.addEventListener("mouseleave", () => { tip.hidden = true; });
+  // Reveal on hover of the whole situation item, not just the small chip.
+  li.addEventListener("mouseenter", () => { tip.hidden = false; });
+  li.addEventListener("mouseleave", () => { tip.hidden = true; });
 }
 
 // ── Alert metrics (estimate.alert) ──────────────────────────────────────

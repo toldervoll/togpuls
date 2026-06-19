@@ -1143,6 +1143,8 @@ h2 {
 .sit-cause:empty { display: none; }
 .sit-meta {
   display: flex;
+  flex-wrap: wrap;       /* chips stack under each other when there's no room */
+  flex-basis: 100%;      /* own row beneath the text, like .sit-lines */
   align-items: baseline;
   gap: 4px 8px;
   position: relative;
@@ -1425,6 +1427,15 @@ h2 {
   .tl-bars { height: 80px; }
   .big-counters { grid-template-columns: repeat(3, 1fr); }
   .big { padding: var(--space-sm) var(--space-md); }
+
+  /* Situations: severity label + count on top, the body spanning the full
+     item width below, with meters stacked above the content — so the text,
+     chips and lines all get the full width instead of a squeezed column. */
+  .sit-list li { grid-template-columns: 1fr auto; row-gap: 5px; }
+  .sit-sev { grid-column: 1; grid-row: 1; }
+  .sit-count-badge { grid-column: 2; grid-row: 1; }
+  .sit-body { grid-column: 1 / -1; grid-row: 2; }
+  .sit-body.has-meters { grid-template-columns: 1fr; }
 }
 
 /* ── Reduced motion ───────────────────────────────────────────────────── */
