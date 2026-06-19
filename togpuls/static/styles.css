@@ -1088,12 +1088,11 @@ h2 {
   gap: var(--space-sm);
   align-items: start;
 }
-/* Chips (estimate + cause) get their own right-hand column, stacked and
-   right-aligned beside the meters/text/lines block. */
+/* Chips (estimate + cause) get their own right-hand column: side by side on
+   one line when there's room, wrapping only when the row runs out of space. */
 .sit-body.has-meters .sit-meta {
-  flex-direction: column;
-  align-items: flex-end;
-  text-align: right;
+  justify-content: flex-end;
+  align-content: flex-start;
 }
 .sit-content { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
 
@@ -1456,6 +1455,7 @@ h2 {
   .sit-body.has-meters .sit-meta {
     flex-basis: 100%;
     flex-direction: row;
+    justify-content: flex-start;
     align-items: baseline;
     text-align: left;
   }

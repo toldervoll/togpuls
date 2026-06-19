@@ -88,22 +88,23 @@ function syncUrl() {
 }
 
 function buildPerLineSituations(sits) {
+  // Collapse messages into events first (same as the grouped view), so each
+  // line lists one entry per distinct event instead of every raw message.
   const byLine = new Map();
-  for (const s of sits) {
-    const text = s.summary || s.description || "(no text)";
-    for (const line of s.paavirker_linjer || []) {
+  for (const ev of groupSituations(sits)) {
+    for (const line of ev.lines) {
       let e = byLine.get(line);
       if (!e) {
-        e = { line, severity: s.severity || "ukjent", texts: new Set(), estimate: null,
+        e = { line, severity: ev.severity, texts: new Set(), estimate: null,
               cause_code: "", cause_text: "" };
         byLine.set(line, e);
       }
-      e.texts.add(text);
-      if (e.estimate == null && s.estimate != null) e.estimate = s.estimate;
+      e.texts.add(ev.text);
+      if (e.estimate == null && ev.estimate != null) e.estimate = ev.estimate;
       const cur = SEVERITY_RANK[e.severity] ?? 99;
-      const inc = SEVERITY_RANK[s.severity] ?? 99;
-      if (inc < cur) e.severity = s.severity;
-      if (!e.cause_code && !e.cause_text) { e.cause_code = s.cause_code || ""; e.cause_text = s.cause_text || ""; }
+      const inc = SEVERITY_RANK[ev.severity] ?? 99;
+      if (inc < cur) e.severity = ev.severity;
+      if (!e.cause_code && !e.cause_text) { e.cause_code = ev.cause_code; e.cause_text = ev.cause_text; }
     }
   }
   return Array.from(byLine.values())
@@ -569,11 +570,11 @@ function renderSituations(sits) {
           </div>
           <div class="sit-content">
             <div class="sit-text"></div>
-            <div class="sit-meta">
-              <div class="sit-estimate"></div>
-              <span class="sit-cause"></span>
-            </div>
             <div class="sit-lines"></div>
+          </div>
+          <div class="sit-meta">
+            <div class="sit-estimate"></div>
+            <span class="sit-cause"></span>
           </div>
         </div>
         ${countBadge}`;
