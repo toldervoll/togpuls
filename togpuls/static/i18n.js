@@ -110,7 +110,7 @@ const I18N_STRINGS = {
     "sit_hist_n_situations":   "Hist. tilfeller",
     "sit_hist_reopen_spread":  "Åpner (p80/p90)",
     "sit_hist_impact_spread":  "Konsekvens (p80/p90)",
-    "sit_est_eta": "Anslått over om ~{dur}",
+    "sit_est_eta": "Over om ~{dur}",
     "sit_est_overdue": "Over anslått tid",
     "tier_label.low": "LAV RISIKO",
     "tier_label.medium": "MIDDELS RISIKO",

@@ -1083,9 +1083,17 @@ h2 {
 
 .sit-body  { display: grid; gap: 3px; }
 .sit-body.has-meters {
-  grid-template-columns: auto 1fr;
+  /* meters | situation text + members + lines | chips column */
+  grid-template-columns: auto 1fr auto;
   gap: var(--space-sm);
   align-items: start;
+}
+/* Chips (estimate + cause) get their own right-hand column, stacked and
+   right-aligned beside the meters/text/lines block. */
+.sit-body.has-meters .sit-meta {
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
 }
 .sit-content { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
 
@@ -1428,14 +1436,29 @@ h2 {
   .big-counters { grid-template-columns: repeat(3, 1fr); }
   .big { padding: var(--space-sm) var(--space-md); }
 
-  /* Situations: severity label + count on top, the body spanning the full
-     item width below, with meters stacked above the content — so the text,
-     chips and lines all get the full width instead of a squeezed column. */
+  /* Situations: severity label + count on top; below it the body lays the
+     meters, situation text and affected lines out as one wrapping band, while
+     the chips (estimate + cause) drop to their own row at the bottom. */
   .sit-list li { grid-template-columns: 1fr auto; row-gap: 5px; }
   .sit-sev { grid-column: 1; grid-row: 1; }
   .sit-count-badge { grid-column: 2; grid-row: 1; }
   .sit-body { grid-column: 1 / -1; grid-row: 2; }
-  .sit-body.has-meters { grid-template-columns: 1fr; }
+  .sit-body.has-meters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    column-gap: var(--space-sm);
+    row-gap: 4px;
+  }
+  /* Meters on the left; the content (situation text, members, affected lines)
+     stacks vertically beside them, and the chip row drops to its own line. */
+  .sit-body.has-meters .sit-content { flex: 1 1 0; min-width: 0; }
+  .sit-body.has-meters .sit-meta {
+    flex-basis: 100%;
+    flex-direction: row;
+    align-items: baseline;
+    text-align: left;
+  }
 }
 
 /* ── Reduced motion ───────────────────────────────────────────────────── */

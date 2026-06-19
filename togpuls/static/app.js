@@ -603,12 +603,12 @@ function renderSituations(sits) {
           </div>
           <div class="sit-content">
             <div class="sit-text"></div>
-            <div class="sit-meta">
-              <div class="sit-estimate"></div>
-              <span class="sit-cause"></span>
-            </div>
             <div class="sit-members"></div>
             <div class="sit-lines"></div>
+          </div>
+          <div class="sit-meta">
+            <div class="sit-estimate"></div>
+            <span class="sit-cause"></span>
           </div>
         </div>
         ${countBadge}`;
