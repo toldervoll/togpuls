@@ -1260,10 +1260,152 @@ async function refresh() {
 
 // ── Route picker ───────────────────────────────────────────────────────
 
+// A lightweight, accessible single-select combobox with type-ahead search.
+// Vanilla, no build step: builds <input role="combobox"> + <ul role="listbox">
+// inside `container`, filters items as you type, and calls onChange(value) on
+// selection. Styled in styles.css to match the Entur "linje" look.
+function createCombobox(container, { ariaLabelKey, onChange }) {
+  const listId = container.id + "-listbox";
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "combo-input";
+  input.autocomplete = "off";
+  input.spellcheck = false;
+  input.setAttribute("role", "combobox");
+  input.setAttribute("aria-autocomplete", "list");
+  input.setAttribute("aria-expanded", "false");
+  input.setAttribute("aria-controls", listId);
+  const list = document.createElement("ul");
+  list.className = "combo-list";
+  list.id = listId;
+  list.hidden = true;
+  list.setAttribute("role", "listbox");
+  container.append(input, list);
+
+  let items = [];        // [{ value, label }]
+  let filtered = [];
+  let value = "";
+  let active = -1;
+
+  const labelFor = (v) => (items.find((i) => i.value === v) || {}).label || "";
+
+  function applyI18n() {
+    input.setAttribute("aria-label", t(ariaLabelKey));
+    input.placeholder = t("station_search");
+    if (list.hidden) input.value = labelFor(value);
+  }
+
+  function renderList(query) {
+    const q = (query || "").trim().toLowerCase();
+    filtered = q ? items.filter((i) => i.label.toLowerCase().includes(q)) : items.slice();
+    list.innerHTML = "";
+    if (!filtered.length) {
+      const li = document.createElement("li");
+      li.className = "combo-empty";
+      li.textContent = t("no_matches");
+      list.appendChild(li);
+    }
+    filtered.forEach((it, idx) => {
+      const li = document.createElement("li");
+      li.className = "combo-option";
+      li.id = `${listId}-opt-${idx}`;
+      li.setAttribute("role", "option");
+      li.textContent = it.label;
+      if (it.value === value) li.setAttribute("aria-selected", "true");
+      li.addEventListener("mousedown", (e) => { e.preventDefault(); choose(idx); });
+      list.appendChild(li);
+    });
+    setActive(filtered.findIndex((i) => i.value === value));
+  }
+
+  function open() {
+    if (!list.hidden) return;
+    renderList("");
+    list.hidden = false;
+    input.setAttribute("aria-expanded", "true");
+  }
+
+  function close() {
+    if (list.hidden) return;
+    list.hidden = true;
+    input.setAttribute("aria-expanded", "false");
+    input.removeAttribute("aria-activedescendant");
+    input.value = labelFor(value);
+  }
+
+  function setActive(idx) {
+    active = idx;
+    [...list.querySelectorAll(".combo-option")].forEach((li, i) =>
+      li.classList.toggle("is-active", i === idx));
+    const el = idx >= 0 ? document.getElementById(`${listId}-opt-${idx}`) : null;
+    if (el) {
+      input.setAttribute("aria-activedescendant", el.id);
+      el.scrollIntoView({ block: "nearest" });
+    } else {
+      input.removeAttribute("aria-activedescendant");
+    }
+  }
+
+  function choose(idx) {
+    const it = filtered[idx];
+    if (!it) return;
+    const changed = it.value !== value;
+    value = it.value;
+    close();
+    if (changed) onChange(value);
+  }
+
+  // Clear on focus/click so typing searches from scratch and the full list shows.
+  input.addEventListener("focus", () => { input.value = ""; open(); });
+  input.addEventListener("click", () => { if (list.hidden) { input.value = ""; open(); } });
+  input.addEventListener("input", () => { open(); renderList(input.value); });
+  input.addEventListener("blur", () => close());
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (list.hidden) open();
+      else setActive(Math.min(active + 1, filtered.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (!list.hidden) setActive(Math.max(active - 1, 0));
+    } else if (e.key === "Enter") {
+      if (!list.hidden && active >= 0) { e.preventDefault(); choose(active); }
+    } else if (e.key === "Escape") {
+      if (!list.hidden) { e.preventDefault(); close(); }
+    }
+  });
+
+  return {
+    applyI18n,
+    has: (v) => items.some((i) => i.value === v),
+    setItems(newItems) { items = newItems.slice(); if (list.hidden) input.value = labelFor(value); },
+    get value() { return value; },
+    set value(v) { value = v; if (list.hidden) input.value = labelFor(v); },
+  };
+}
+
 async function initRoutePicker() {
-  const fromSel = $("from-select");
-  const toSel = $("to-select");
-  if (!fromSel || !toSel) return;
+  const fromEl = $("from-combo");
+  const toEl = $("to-combo");
+  if (!fromEl || !toEl) return;
+  const swapBtn = $("swap-btn");
+
+  function applyRoute() {
+    if (toCombo.value && toCombo.value === fromCombo.value) toCombo.value = "";
+    if (swapBtn) swapBtn.disabled = !toCombo.value;
+    currentFrom = fromCombo.value || DEFAULT_FROM_STOP_PLACE_ID;
+    currentTo = toCombo.value;
+    try {
+      localStorage.setItem("togpuls-from", currentFrom);
+      if (currentTo) localStorage.setItem("togpuls-to", currentTo);
+      else localStorage.removeItem("togpuls-to");
+    } catch (e) {}
+    syncUrl();
+    refresh();
+  }
+
+  const fromCombo = createCombobox(fromEl, { ariaLabelKey: "from_label", onChange: applyRoute });
+  const toCombo = createCombobox(toEl, { ariaLabelKey: "to_label", onChange: applyRoute });
 
   try {
     const savedFrom = localStorage.getItem("togpuls-from");
@@ -1286,69 +1428,49 @@ async function initRoutePicker() {
     console.error("stations failed", e);
   }
 
-  for (const s of stations) {
-    const fromOpt = document.createElement("option");
-    fromOpt.value = s.id; fromOpt.textContent = s.name;
-    fromSel.appendChild(fromOpt);
-    const toOpt = document.createElement("option");
-    toOpt.value = s.id; toOpt.textContent = s.name;
-    toSel.appendChild(toOpt);
+  // (Re)build the option lists. `to` leads with the "all directions" entry,
+  // whose label is translated, so this also runs on language change.
+  function setItems() {
+    const opts = stations.map((s) => ({ value: s.id, label: s.name }));
+    fromCombo.setItems(opts);
+    toCombo.setItems([{ value: "", label: t("all_directions") }, ...opts]);
   }
+  setItems();
 
-  if (![...fromSel.options].some((o) => o.value === currentFrom)) {
-    currentFrom = DEFAULT_FROM_STOP_PLACE_ID;
-  }
-  if (currentTo && (currentTo === currentFrom ||
-      ![...toSel.options].some((o) => o.value === currentTo))) {
-    currentTo = "";
-  }
-  fromSel.value = currentFrom;
-  toSel.value = currentTo;
-  // Normalise the address bar to the resolved route (e.g. an unknown id in
-  // the link falls back to defaults, and the URL should reflect that).
+  if (!fromCombo.has(currentFrom)) currentFrom = DEFAULT_FROM_STOP_PLACE_ID;
+  if (currentTo && (currentTo === currentFrom || !toCombo.has(currentTo))) currentTo = "";
+  fromCombo.value = currentFrom;
+  toCombo.value = currentTo;
+  // Normalise the address bar to the resolved route.
   syncUrl();
-
-  const swapBtn = $("swap-btn");
-
-  function applyRoute() {
-    if (toSel.value && toSel.value === fromSel.value) {
-      toSel.value = "";
-    }
-    if (swapBtn) swapBtn.disabled = !toSel.value;
-    currentFrom = fromSel.value || DEFAULT_FROM_STOP_PLACE_ID;
-    currentTo = toSel.value;
-    try {
-      localStorage.setItem("togpuls-from", currentFrom);
-      if (currentTo) localStorage.setItem("togpuls-to", currentTo);
-      else localStorage.removeItem("togpuls-to");
-    } catch (e) {}
-    syncUrl();
-    refresh();
-  }
-
-  fromSel.addEventListener("change", applyRoute);
-  toSel.addEventListener("change", applyRoute);
 
   // Re-apply the route when the hash is edited or a new link is opened in the
   // same tab. replaceState (used by syncUrl) does not fire this, so no loop.
   window.addEventListener("hashchange", () => {
     const r = readUrlRoute();
-    const known = (sel, id) => id && [...sel.options].some((o) => o.value === id);
-    fromSel.value = known(fromSel, r.from) ? r.from : DEFAULT_FROM_STOP_PLACE_ID;
-    toSel.value = known(toSel, r.to) ? r.to : "";
+    fromCombo.value = fromCombo.has(r.from) ? r.from : DEFAULT_FROM_STOP_PLACE_ID;
+    toCombo.value = toCombo.has(r.to) ? r.to : "";
     applyRoute();
   });
 
   if (swapBtn) {
-    swapBtn.disabled = !toSel.value;
+    swapBtn.disabled = !toCombo.value;
     swapBtn.addEventListener("click", () => {
-      if (!toSel.value) return;
-      const from = fromSel.value;
-      fromSel.value = toSel.value;
-      toSel.value = from;
+      if (!toCombo.value) return;
+      const from = fromCombo.value;
+      fromCombo.value = toCombo.value;
+      toCombo.value = from;
       applyRoute();
     });
   }
+
+  document.addEventListener("i18n:change", () => {
+    setItems();
+    fromCombo.applyI18n();
+    toCombo.applyI18n();
+  });
+  fromCombo.applyI18n();
+  toCombo.applyI18n();
 }
 
 // ── Theme toggle ───────────────────────────────────────────────────────
