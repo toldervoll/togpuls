@@ -1015,7 +1015,7 @@ function renderBigCounters() {
   tickTo($("cnt-scheduled"), s.scheduled ?? 0);
   tickTo($("cnt-cancelled"), s.cancelled ?? 0);
   tickTo($("cnt-delayed"),   s.delayed_gt_3min ?? 0);
-  $("cnt-p90").textContent = s.p90_delay_min == null ? "—" : s.p90_delay_min;
+  $("cnt-p90").textContent = s.p90_delay_min == null ? "—" : Math.round(s.p90_delay_min);
   // "Kjørt" is meaningless for the future scope — nothing has run yet.
   if (isFuture) {
     $("cnt-realised").textContent = "—";
