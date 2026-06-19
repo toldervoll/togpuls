@@ -411,15 +411,30 @@ h2 {
   z-index: 50;
 }
 .combo-option {
-  padding: 7px 10px;
+  position: relative;
+  padding: 7px 10px 7px 28px;   /* room for the checkmark column on the left */
   border-radius: var(--radius-sm);
   font-size: 0.8125rem;
   color: var(--text);
   cursor: pointer;
   white-space: nowrap;
 }
-.combo-option.is-active { background: rgba(78,167,255,0.14); }
-.combo-option[aria-selected="true"] { color: var(--signal-blue); }
+/* Checkmark to the left of the selected item, like a native menu. */
+.combo-option[aria-selected="true"]::before {
+  content: "✓";
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.72rem;
+  color: var(--signal-blue);
+}
+/* Clear hover/active highlight (mouse and keyboard share this). */
+.combo-option.is-active {
+  background: var(--signal-blue);
+  color: #fff;
+}
+.combo-option.is-active[aria-selected="true"]::before { color: #fff; }
 .combo-empty {
   padding: 7px 10px;
   font-size: 0.8125rem;

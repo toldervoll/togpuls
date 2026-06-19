@@ -1313,6 +1313,7 @@ function createCombobox(container, { ariaLabelKey, onChange }) {
       li.textContent = it.label;
       if (it.value === value) li.setAttribute("aria-selected", "true");
       li.addEventListener("mousedown", (e) => { e.preventDefault(); choose(idx); });
+      li.addEventListener("mouseenter", () => setActive(idx, false));
       list.appendChild(li);
     });
     setActive(filtered.findIndex((i) => i.value === value));
@@ -1333,14 +1334,14 @@ function createCombobox(container, { ariaLabelKey, onChange }) {
     input.value = labelFor(value);
   }
 
-  function setActive(idx) {
+  function setActive(idx, scroll = true) {
     active = idx;
     [...list.querySelectorAll(".combo-option")].forEach((li, i) =>
       li.classList.toggle("is-active", i === idx));
     const el = idx >= 0 ? document.getElementById(`${listId}-opt-${idx}`) : null;
     if (el) {
       input.setAttribute("aria-activedescendant", el.id);
-      el.scrollIntoView({ block: "nearest" });
+      if (scroll) el.scrollIntoView({ block: "nearest" });
     } else {
       input.removeAttribute("aria-activedescendant");
     }
