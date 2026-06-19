@@ -1275,25 +1275,56 @@ function createCombobox(container, { ariaLabelKey, onChange }) {
   input.setAttribute("aria-autocomplete", "list");
   input.setAttribute("aria-expanded", "false");
   input.setAttribute("aria-controls", listId);
+
+  // Panel wraps a scrollable list plus non-scrolling scroll arrows. The
+  // scrollbar is hidden, so the arrows are the affordance for "more above/below"
+  // (shown only at the relevant edge) and scroll on click/hold — like a native
+  // menu.
+  const popup = document.createElement("div");
+  popup.className = "combo-popup";
+  popup.hidden = true;
   const list = document.createElement("ul");
   list.className = "combo-list";
   list.id = listId;
-  list.hidden = true;
   list.setAttribute("role", "listbox");
-  container.append(input, list);
+  const mkArrow = (dir, glyph) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = `combo-scroll ${dir}`;
+    b.tabIndex = -1;
+    b.setAttribute("aria-hidden", "true");
+    b.hidden = true;
+    b.textContent = glyph;
+    return b;
+  };
+  const upBtn = mkArrow("up", "▴");
+  const downBtn = mkArrow("down", "▾");
+  popup.append(upBtn, list, downBtn);
+  container.append(input, popup);
 
   let items = [];        // [{ value, label }]
   let filtered = [];
   let value = "";
   let active = -1;
+  let scrollTimer = null;
 
   const labelFor = (v) => (items.find((i) => i.value === v) || {}).label || "";
 
   function applyI18n() {
     input.setAttribute("aria-label", t(ariaLabelKey));
     input.placeholder = t("station_search");
-    if (list.hidden) input.value = labelFor(value);
+    if (popup.hidden) input.value = labelFor(value);
   }
+
+  function updateArrows() {
+    if (popup.hidden) { upBtn.hidden = downBtn.hidden = true; return; }
+    upBtn.hidden = list.scrollTop <= 1;
+    downBtn.hidden = list.scrollTop + list.clientHeight >= list.scrollHeight - 1;
+  }
+
+  function nudge(dir) { list.scrollTop += dir * 96; updateArrows(); }
+  function startScroll(dir) { stopScroll(); nudge(dir); scrollTimer = setInterval(() => nudge(dir), 140); }
+  function stopScroll() { if (scrollTimer) { clearInterval(scrollTimer); scrollTimer = null; } }
 
   function renderList(query) {
     const q = (query || "").trim().toLowerCase();
@@ -1317,18 +1348,21 @@ function createCombobox(container, { ariaLabelKey, onChange }) {
       list.appendChild(li);
     });
     setActive(filtered.findIndex((i) => i.value === value));
+    updateArrows();
   }
 
   function open() {
-    if (!list.hidden) return;
+    if (!popup.hidden) return;
     renderList("");
-    list.hidden = false;
+    popup.hidden = false;
     input.setAttribute("aria-expanded", "true");
+    updateArrows();
   }
 
   function close() {
-    if (list.hidden) return;
-    list.hidden = true;
+    if (popup.hidden) return;
+    stopScroll();
+    popup.hidden = true;
     input.setAttribute("aria-expanded", "false");
     input.removeAttribute("aria-activedescendant");
     input.value = labelFor(value);
@@ -1341,7 +1375,7 @@ function createCombobox(container, { ariaLabelKey, onChange }) {
     const el = idx >= 0 ? document.getElementById(`${listId}-opt-${idx}`) : null;
     if (el) {
       input.setAttribute("aria-activedescendant", el.id);
-      if (scroll) el.scrollIntoView({ block: "nearest" });
+      if (scroll) { el.scrollIntoView({ block: "nearest" }); updateArrows(); }
     } else {
       input.removeAttribute("aria-activedescendant");
     }
@@ -1358,30 +1392,39 @@ function createCombobox(container, { ariaLabelKey, onChange }) {
 
   // Clear on focus/click so typing searches from scratch and the full list shows.
   input.addEventListener("focus", () => { input.value = ""; open(); });
-  input.addEventListener("click", () => { if (list.hidden) { input.value = ""; open(); } });
+  input.addEventListener("click", () => { if (popup.hidden) { input.value = ""; open(); } });
   input.addEventListener("input", () => { open(); renderList(input.value); });
   input.addEventListener("blur", () => close());
   input.addEventListener("keydown", (e) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      if (list.hidden) open();
+      if (popup.hidden) open();
       else setActive(Math.min(active + 1, filtered.length - 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      if (!list.hidden) setActive(Math.max(active - 1, 0));
+      if (!popup.hidden) setActive(Math.max(active - 1, 0));
     } else if (e.key === "Enter") {
-      if (!list.hidden && active >= 0) { e.preventDefault(); choose(active); }
+      if (!popup.hidden && active >= 0) { e.preventDefault(); choose(active); }
     } else if (e.key === "Escape") {
-      if (!list.hidden) { e.preventDefault(); close(); }
+      if (!popup.hidden) { e.preventDefault(); close(); }
     }
+  });
+
+  list.addEventListener("scroll", updateArrows);
+  // mousedown (not click) keeps the input focused so the popup stays open.
+  upBtn.addEventListener("mousedown", (e) => { e.preventDefault(); startScroll(-1); });
+  downBtn.addEventListener("mousedown", (e) => { e.preventDefault(); startScroll(1); });
+  [upBtn, downBtn].forEach((b) => {
+    b.addEventListener("mouseup", stopScroll);
+    b.addEventListener("mouseleave", stopScroll);
   });
 
   return {
     applyI18n,
     has: (v) => items.some((i) => i.value === v),
-    setItems(newItems) { items = newItems.slice(); if (list.hidden) input.value = labelFor(value); },
+    setItems(newItems) { items = newItems.slice(); if (popup.hidden) input.value = labelFor(value); },
     get value() { return value; },
-    set value(v) { value = v; if (list.hidden) input.value = labelFor(v); },
+    set value(v) { value = v; if (popup.hidden) input.value = labelFor(v); },
   };
 }
 

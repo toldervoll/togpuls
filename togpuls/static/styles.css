@@ -394,14 +394,21 @@ h2 {
   outline: 2px solid var(--signal-blue);
   outline-offset: 1px;
 }
-.combo-list {
+.combo-popup {
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
   min-width: 100%;
-  /* Bounded so a full list never overflows the viewport, but the scrollbar
-     chrome is hidden — this is a search field, so scrolling is rarely needed
-     (wheel/trackpad/keyboard still work). */
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.28);
+  overflow: hidden;             /* clip the list to the rounded corners */
+  z-index: 50;
+}
+.combo-list {
+  /* Bounded so a full list never overflows the viewport. The scrollbar chrome
+     is hidden — the up/down arrows are the affordance instead. */
   max-height: 280px;
   overflow-y: auto;
   scrollbar-width: none;        /* Firefox */
@@ -409,13 +416,37 @@ h2 {
   margin: 0;
   padding: 4px;
   list-style: none;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.28);
-  z-index: 50;
 }
 .combo-list::-webkit-scrollbar { width: 0; height: 0; }  /* WebKit/Blink */
+
+/* Native-style scroll arrows — shown only at the edge where items are hidden,
+   scroll on click or press-and-hold. */
+.combo-scroll {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  z-index: 1;
+}
+.combo-scroll:hover { color: var(--signal-blue); }
+.combo-scroll.up {
+  top: 0;
+  background: linear-gradient(to bottom, var(--surface) 55%, rgba(0,0,0,0));
+}
+.combo-scroll.down {
+  bottom: 0;
+  background: linear-gradient(to top, var(--surface) 55%, rgba(0,0,0,0));
+}
+.combo-scroll[hidden] { display: none; }
 .combo-option {
   position: relative;
   padding: 7px 10px 7px 28px;   /* room for the checkmark column on the left */
