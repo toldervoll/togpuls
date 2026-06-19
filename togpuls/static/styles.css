@@ -932,10 +932,11 @@ h2 {
   color: var(--text-muted);
 }
 
-/* Semantic counter colours */
-.num.neg       { color: var(--signal-red); }
-.num.sig-amber { color: var(--signal-amber); }
-.num.sig-green { color: var(--signal-green); }
+/* The number takes its tile's signal-lamp colour, so the dot and the value
+   always agree (no lamp → default text colour). */
+.big-counters > div.lamp-red   .num { color: var(--signal-red); }
+.big-counters > div.lamp-amber .num { color: var(--signal-amber); }
+.big-counters > div.lamp-green .num { color: var(--signal-green); }
 
 /* ── Cards (blocks) ───────────────────────────────────────────────────── */
 .block {

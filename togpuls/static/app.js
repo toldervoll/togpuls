@@ -1060,7 +1060,8 @@ function renderBigCounters() {
   tickTo($("cnt-scheduled"), s.scheduled ?? 0);
   tickTo($("cnt-cancelled"), s.cancelled ?? 0);
   tickTo($("cnt-delayed"),   s.delayed_gt_3min ?? 0);
-  $("cnt-p90").textContent = s.p90_delay_min == null ? "—" : Math.round(s.p90_delay_min);
+  if (s.p90_delay_min == null) $("cnt-p90").textContent = "—";
+  else tickTo($("cnt-p90"), Math.round(s.p90_delay_min));   // count up like the other tiles
   // "Kjørt" is meaningless for the future scope — nothing has run yet.
   if (isFuture) {
     $("cnt-realised").textContent = "—";
@@ -1075,13 +1076,10 @@ function renderBigCounters() {
   if (wrapPast) wrapPast.classList.toggle("hidden", isFuture);
   if (wrapFut) wrapFut.classList.toggle("hidden", bigScope === "past");
 
-  // Semantic counter colours + signal lamps per tile
+  // Signal lamps per tile — the lamp also drives the number colour (CSS).
   const pastSched = tm.past_scheduled || 0;
   const utilPast = pastSched > 0 ? (100 * (tm.realised || 0)) / pastSched : 0;
   const kjortGreen = !isFuture && pastSched > 0 && utilPast >= 90;
-  $("cnt-cancelled").classList.toggle("neg", (s.cancelled || 0) > 0);
-  $("cnt-delayed").classList.toggle("sig-amber", (s.delayed_gt_3min || 0) > 0);
-  $("cnt-realised").classList.toggle("sig-green", kjortGreen);
 
   const tileOf = (id) => $(id)?.parentElement;
   setLamp(tileOf("cnt-cancelled"), (s.cancelled || 0) > 0 ? "lamp-red" : null);
