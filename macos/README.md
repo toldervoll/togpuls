@@ -85,8 +85,80 @@ python setup.py py2app
 ```
 
 Resultatet havner i `dist/Togpuls.app`. `LSUIElement=True` gjør den til en ren
-menylinje-app uten dock-ikon. Flytt den til `/Applications` og legg den evt. til
-i *Systeminnstillinger → Generelt → Oppstartsobjekter* for autostart.
+menylinje-app uten dock-ikon. Flytt den til `/Applications`.
 
 > **NB:** Bygg med Homebrew- eller python.org-Python. Xcode/CommandLineTools sin
 > Python 3.9 har ikke et signerbart framework, og py2app feiler på codesign-steget.
+
+## Autostart ved innlogging
+
+To måter — velg én.
+
+### A) Som .app via Oppstartsobjekter (enklest)
+
+Bygg `.app`-en, flytt den til `/Applications`, og legg den til som
+oppstartsobjekt. Via grensesnittet:
+
+*Systeminnstillinger → Generelt → Oppstartsobjekter → Åpne ved innlogging → «+»*
+og velg `Togpuls.app`.
+
+Eller fra terminalen:
+
+```bash
+make macos-app
+cp -R macos/dist/Togpuls.app /Applications/
+osascript -e 'tell application "System Events" to make login item \
+  at end with properties {path:"/Applications/Togpuls.app", hidden:true}'
+```
+
+Fjern igjen med:
+
+```bash
+osascript -e 'tell application "System Events" to delete login item "Togpuls"'
+```
+
+### B) Fra kildekode via launchd (uten .app)
+
+Kjører menylinje-appen rett fra venv-et, og starter den på nytt om den
+stopper (`KeepAlive`). Lag `~/Library/LaunchAgents/no.kengu.togpuls.menubar.plist`
+— bytt ut `<REPO>` med den absolutte stien til dette repoet:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>            <string>no.kengu.togpuls.menubar</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string><REPO>/macos/.venv/bin/python</string>
+    <string><REPO>/macos/togpuls_bar.py</string>
+  </array>
+  <key>RunAtLoad</key>        <true/>
+  <key>KeepAlive</key>        <true/>
+  <!-- valgfri konfig, f.eks. korridor: -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>TOGPULS_TO_PLACE</key><string>NSR:StopPlace:451</string>
+  </dict>
+</dict>
+</plist>
+```
+
+Aktiver (og start nå):
+
+```bash
+launchctl load -w ~/Library/LaunchAgents/no.kengu.togpuls.menubar.plist
+```
+
+Slå av og fjern:
+
+```bash
+launchctl unload -w ~/Library/LaunchAgents/no.kengu.togpuls.menubar.plist
+rm ~/Library/LaunchAgents/no.kengu.togpuls.menubar.plist
+```
+
+Forutsetter at venv-et finnes (`make macos-run` eller `make configure` én gang).
+Konfigurer ellers via `EnvironmentVariables` i plist-en — ikke skallets miljø,
+siden launchd ikke leser `~/.zshrc`.
