@@ -784,11 +784,12 @@ h2 {
   box-shadow: var(--shadow-sm);
 }
 
-/* Gauges span both rows; the scope toggle sits centered below the tiles */
+/* Gauges span both rows; the scope toggle sits right-aligned below the tiles
+   (centered instead when the layout stacks — see the ≤720px query). */
 .big .big-stat { grid-row: 1 / span 2; }
 .big-toggle {
   grid-column: 2;
-  justify-self: center;
+  justify-self: end;
   margin-top: 0;
   align-self: start;
 }
@@ -1358,7 +1359,7 @@ h2 {
     gap: var(--space-md);
   }
   .big .big-stat { grid-row: auto; }
-  .big-toggle { grid-column: 1; }
+  .big-toggle { grid-column: 1; justify-self: center; }
   .gauge-wrap { width: 130px; height: 130px; }
 
   /* Platform & pax tables → card stack: platform code left, counters in
