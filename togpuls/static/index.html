@@ -195,7 +195,7 @@
       <!-- Stat strip with gauge ring + counters -->
       <section class="big">
         <div class="big-stat">
-          <div id="gauge-wrap-past" class="gauge-wrap" data-i18n-attr="title:tip_util_past" title="Andel planlagte tog som faktisk kjørte i tidsvinduet.">
+          <div id="gauge-wrap-past" class="gauge-wrap" data-tip="tip_util_past">
             <svg id="gauge-past" class="gauge-ring" viewBox="0 0 120 120" role="img" aria-label="">
               <circle class="gauge-track" cx="60" cy="60" r="50"/>
               <circle class="gauge-arc" cx="60" cy="60" r="50"/>
@@ -205,7 +205,7 @@
               <div class="big-label" data-i18n="big_util_past">gjennomført</div>
             </div>
           </div>
-          <div id="gauge-wrap-future" class="gauge-wrap" data-i18n-attr="title:tip_util_future" title="Andel kommende tog som forventes å kjøre.">
+          <div id="gauge-wrap-future" class="gauge-wrap" data-tip="tip_util_future">
             <svg id="gauge-future" class="gauge-ring" viewBox="0 0 120 120" role="img" aria-label="">
               <circle class="gauge-track" cx="60" cy="60" r="50"/>
               <circle class="gauge-arc" cx="60" cy="60" r="50"/>
@@ -217,11 +217,11 @@
           </div>
         </div>
         <div class="big-counters">
-          <div data-i18n-attr="title:tip_cancelled" title="Antall avganger innstilt i tidsvinduet."><span id="cnt-cancelled" class="num">0</span><span class="cap" data-i18n="big_cancelled">kansellert</span></div>
-          <div data-i18n-attr="title:tip_delayed" title="Antall avganger forsinket mer enn 3 minutter."><span id="cnt-delayed" class="num">0</span><span class="cap" data-i18n="big_delayed">forsinket &gt;3 min</span></div>
-          <div data-i18n-attr="title:tip_p90" title="90-persentil av forsinkelsene."><span id="cnt-p90" class="num">—</span><span class="cap" data-i18n="big_p90">p90-forsinkelse (min)</span></div>
-          <div data-i18n-attr="title:tip_realised" title="Antall avganger som har kjørt (kun historikk)."><span id="cnt-realised" class="num">0</span><span class="cap" data-i18n="big_realised">kjørt</span></div>
-          <div data-i18n-attr="title:tip_scheduled" title="Antall planlagte avganger i tidsvinduet."><span id="cnt-scheduled" class="num">0</span><span class="cap" data-i18n="big_scheduled">planlagt</span></div>
+          <div data-tip="tip_cancelled"><span id="cnt-cancelled" class="num">0</span><span class="cap" data-i18n="big_cancelled">kansellert</span></div>
+          <div data-tip="tip_delayed"><span id="cnt-delayed" class="num">0</span><span class="cap" data-i18n="big_delayed">forsinket &gt;3 min</span></div>
+          <div data-tip="tip_p90"><span id="cnt-p90" class="num">—</span><span class="cap" data-i18n="big_p90">p90-forsinkelse (min)</span></div>
+          <div data-tip="tip_realised"><span id="cnt-realised" class="num">0</span><span class="cap" data-i18n="big_realised">kjørt</span></div>
+          <div data-tip="tip_scheduled"><span id="cnt-scheduled" class="num">0</span><span class="cap" data-i18n="big_scheduled">planlagt</span></div>
         </div>
         <div id="big-scope-toggle" class="seg-toggle big-toggle" role="group"
              data-i18n-attr="aria-label:big_scope_label" aria-label="Tidsrom for statistikk">

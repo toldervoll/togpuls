@@ -818,6 +818,51 @@ function hideBarTip(host) {
   if (tip) tip.hidden = true;
 }
 
+// ── Stat tooltips — same styled popover as the timeline, on the tiles/gauges ──
+
+function _statTipEl(host) {
+  let tip = host.querySelector(".stat-tip");
+  if (!tip) {
+    tip = document.createElement("div");
+    tip.className = "tl-tip stat-tip";
+    tip.setAttribute("role", "tooltip");
+    tip.hidden = true;
+    host.appendChild(tip);
+  }
+  return tip;
+}
+
+function showStatTip(host, anchor, text) {
+  const tip = _statTipEl(host);
+  tip.textContent = text;
+  tip.hidden = false;
+  const hostRect = host.getBoundingClientRect();
+  const aRect = anchor.getBoundingClientRect();
+  // Below the anchor, or above when there's no room beneath in the viewport.
+  const below = aRect.bottom - hostRect.top + 8;
+  const above = aRect.top - hostRect.top - tip.offsetHeight - 8;
+  const noRoomBelow = aRect.bottom + tip.offsetHeight + 16 > window.innerHeight;
+  tip.style.top = `${noRoomBelow && aRect.top - tip.offsetHeight - 8 >= 0 ? above : below}px`;
+  // Center over the anchor, clamped within the card.
+  const center = aRect.left - hostRect.left + aRect.width / 2;
+  const left = Math.max(4, Math.min(center - tip.offsetWidth / 2, hostRect.width - tip.offsetWidth - 4));
+  tip.style.left = `${left}px`;
+}
+
+function hideStatTip(host) {
+  const tip = host.querySelector(".stat-tip");
+  if (tip) tip.hidden = true;
+}
+
+function initStatTips() {
+  const host = document.querySelector(".big");
+  if (!host) return;
+  for (const el of host.querySelectorAll("[data-tip]")) {
+    el.addEventListener("mouseenter", () => showStatTip(host, el, t(el.dataset.tip)));
+    el.addEventListener("mouseleave", () => hideStatTip(host));
+  }
+}
+
 // ── Render: summary ────────────────────────────────────────────────────
 
 function buildSummary(d) {
@@ -1660,6 +1705,7 @@ initThemeToggle();
 initLangToggle();
 initSituationToggle();
 initBigScopeToggle();
+initStatTips();
 initRoutePicker().then(refresh);
 
 const reloadBtn = $("reload-btn");

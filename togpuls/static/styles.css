@@ -773,6 +773,7 @@ h2 {
 
 /* ── Stat strip with gauge ────────────────────────────────────────────── */
 .big {
+  position: relative;   /* anchor for the stat tooltips */
   display: grid;
   grid-template-columns: auto 1fr;
   gap: var(--space-sm) var(--space-lg);
@@ -783,6 +784,8 @@ h2 {
   padding: var(--space-md) var(--space-lg);
   box-shadow: var(--shadow-sm);
 }
+/* Stat tooltip uses the timeline tooltip's look but is positioned in JS. */
+.stat-tip { top: 0; left: 0; }
 
 /* Gauges span both rows; the scope toggle sits right-aligned below the tiles
    (centered instead when the layout stacks — see the ≤720px query). */
