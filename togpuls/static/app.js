@@ -1327,20 +1327,29 @@ function createCombobox(container, { ariaLabelKey, onChange }) {
   // continuous glide. Release lets the in-flight glide settle, then stops.
   const maxTop = () => list.scrollHeight - list.clientHeight;
   const clampTop = (v) => Math.max(0, Math.min(maxTop(), v));
+  // One click pages by ~a viewport, keeping the row nearest the arrow for
+  // continuity (so every other visible item is replaced). Holding keeps paging.
+  const pageStep = () => {
+    const row = (list.querySelector(".combo-option") || {}).offsetHeight || 34;
+    return Math.max(row, list.clientHeight - row);
+  };
   function animStep() {
     if (popup.hidden) { cancelScroll(); return; }
-    if (holdDir) targetTop = clampTop(targetTop + holdDir * 9);   // advance while held
     const cur = list.scrollTop;
-    list.scrollTop = cur + (targetTop - cur) * 0.3;               // ease toward target
-    updateArrows();
-    if (!holdDir && Math.abs(targetTop - list.scrollTop) <= 1) {  // settled after release
+    const diff = targetTop - cur;
+    if (Math.abs(diff) <= 2) {                       // reached the page target
       list.scrollTop = targetTop;
-      clearInterval(animTimer); animTimer = null;
+      updateArrows();
+      if (holdDir) targetTop = clampTop(targetTop + holdDir * pageStep());  // next page
+      else { clearInterval(animTimer); animTimer = null; }
+      return;
     }
+    list.scrollTop = cur + diff * 0.3;               // eased glide toward the page
+    updateArrows();
   }
   function startScroll(dir) {
     holdDir = dir;
-    targetTop = clampTop(list.scrollTop + dir * 70);              // initial chunk for a click
+    targetTop = clampTop(list.scrollTop + dir * pageStep());
     if (!animTimer) animTimer = setInterval(animStep, 16);
   }
   function stopScroll() { holdDir = 0; }   // settle to target, then stop
