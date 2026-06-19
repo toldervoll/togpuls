@@ -1660,6 +1660,14 @@ initSituationToggle();
 initBigScopeToggle();
 initRoutePicker().then(refresh);
 
+const reloadBtn = $("reload-btn");
+if (reloadBtn) {
+  reloadBtn.addEventListener("click", async () => {
+    reloadBtn.classList.add("loading");
+    try { await refresh(); } finally { reloadBtn.classList.remove("loading"); }
+  });
+}
+
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch((err) => {

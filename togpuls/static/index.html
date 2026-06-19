@@ -114,6 +114,11 @@
         <circle cx="12" cy="12" r="9"/>
         <polyline points="12 7 12 12 15 14"/>
       </symbol>
+      <symbol id="reload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 4 23 10 17 10"/>
+        <polyline points="1 20 1 14 7 14"/>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+      </symbol>
     </svg>
 
     <main id="app">
@@ -136,7 +141,12 @@
               <span id="window" class="win">—</span>
               <span id="window-dur" class="dur">—</span>
               <span class="dot" aria-hidden="true">·</span>
-              <span id="updated" data-i18n="never">aldri</span>
+              <button id="reload-btn" class="reload-btn" type="button"
+                      data-i18n-attr="aria-label:reload,title:reload"
+                      aria-label="Oppdater nå" title="Oppdater nå">
+                <svg class="icon" aria-hidden="true"><use href="#reload"/></svg>
+                <span id="updated" data-i18n="never">aldri</span>
+              </button>
               <span id="loading-badge" class="badge badge-info hidden" data-i18n="loading">laster…</span>
               <span id="stale-badge" class="badge hidden" data-i18n="stale">utdatert</span>
             </div>

@@ -39,7 +39,8 @@ const I18N_STRINGS = {
     "never": "aldri",
     "loading": "laster…",
     "stale": "utdatert",
-    "updated_at": "oppdatert {time}",
+    "updated_at": "({time})",
+    "reload": "Oppdater nå",
 
     // Timeline
     "timeline_window": "±90 min",
@@ -259,7 +260,8 @@ const I18N_STRINGS = {
     "never": "never",
     "loading": "loading…",
     "stale": "stale",
-    "updated_at": "updated {time}",
+    "updated_at": "({time})",
+    "reload": "Refresh",
 
     "timeline_window": "±90 min",
     "axis_neg90": "−90 min",
