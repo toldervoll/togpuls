@@ -1306,7 +1306,7 @@ function createCombobox(container, { ariaLabelKey, onChange }) {
   let filtered = [];
   let value = "";
   let active = -1;
-  let scrollTimer = null;
+  let animTimer = null, targetTop = 0, holdDir = 0;
 
   const labelFor = (v) => (items.find((i) => i.value === v) || {}).label || "";
 
@@ -1322,9 +1322,29 @@ function createCombobox(container, { ariaLabelKey, onChange }) {
     downBtn.hidden = list.scrollTop + list.clientHeight >= list.scrollHeight - 1;
   }
 
-  function nudge(dir) { list.scrollTop += dir * 96; updateArrows(); }
-  function startScroll(dir) { stopScroll(); nudge(dir); scrollTimer = setInterval(() => nudge(dir), 140); }
-  function stopScroll() { if (scrollTimer) { clearInterval(scrollTimer); scrollTimer = null; } }
+  // Self-driven eased scroll (a timer, not native `behavior:smooth`, which some
+  // browsers no-op). A click glides one chunk; holding keeps re-targeting for a
+  // continuous glide. Release lets the in-flight glide settle, then stops.
+  const maxTop = () => list.scrollHeight - list.clientHeight;
+  const clampTop = (v) => Math.max(0, Math.min(maxTop(), v));
+  function animStep() {
+    if (popup.hidden) { cancelScroll(); return; }
+    if (holdDir) targetTop = clampTop(targetTop + holdDir * 9);   // advance while held
+    const cur = list.scrollTop;
+    list.scrollTop = cur + (targetTop - cur) * 0.3;               // ease toward target
+    updateArrows();
+    if (!holdDir && Math.abs(targetTop - list.scrollTop) <= 1) {  // settled after release
+      list.scrollTop = targetTop;
+      clearInterval(animTimer); animTimer = null;
+    }
+  }
+  function startScroll(dir) {
+    holdDir = dir;
+    targetTop = clampTop(list.scrollTop + dir * 70);              // initial chunk for a click
+    if (!animTimer) animTimer = setInterval(animStep, 16);
+  }
+  function stopScroll() { holdDir = 0; }   // settle to target, then stop
+  function cancelScroll() { holdDir = 0; if (animTimer) { clearInterval(animTimer); animTimer = null; } }
 
   function renderList(query) {
     const q = (query || "").trim().toLowerCase();
@@ -1361,7 +1381,7 @@ function createCombobox(container, { ariaLabelKey, onChange }) {
 
   function close() {
     if (popup.hidden) return;
-    stopScroll();
+    cancelScroll();
     popup.hidden = true;
     input.setAttribute("aria-expanded", "false");
     input.removeAttribute("aria-activedescendant");
