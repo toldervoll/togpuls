@@ -1307,13 +1307,29 @@ function createCombobox(container, { ariaLabelKey, onChange }) {
   let value = "";
   let active = -1;
   let animTimer = null, targetTop = 0, holdDir = 0;
+  let measureCtx = null;
 
   const labelFor = (v) => (items.find((i) => i.value === v) || {}).label || "";
+
+  // Keep the field as narrow as its content: measure the actual pixel width of
+  // the text (selected label at rest, placeholder/typed text while searching)
+  // and set an exact width — tighter than the `size` attribute's char estimate.
+  function autosize() {
+    const text = document.activeElement === input ? (input.value || t("station_search")) : labelFor(value);
+    const cs = getComputedStyle(input);
+    if (!measureCtx) measureCtx = document.createElement("canvas").getContext("2d");
+    measureCtx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+    const pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
+              + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
+    const w = Math.ceil(measureCtx.measureText(text).width) + pad + 4;  // +4 for the caret
+    input.style.width = Math.max(46, Math.min(240, w)) + "px";
+  }
 
   function applyI18n() {
     input.setAttribute("aria-label", t(ariaLabelKey));
     input.placeholder = t("station_search");
     if (popup.hidden) input.value = labelFor(value);
+    autosize();
   }
 
   function updateArrows() {
@@ -1395,6 +1411,7 @@ function createCombobox(container, { ariaLabelKey, onChange }) {
     input.setAttribute("aria-expanded", "false");
     input.removeAttribute("aria-activedescendant");
     input.value = labelFor(value);
+    autosize();
   }
 
   function setActive(idx, scroll = true) {
@@ -1420,9 +1437,9 @@ function createCombobox(container, { ariaLabelKey, onChange }) {
   }
 
   // Clear on focus/click so typing searches from scratch and the full list shows.
-  input.addEventListener("focus", () => { input.value = ""; open(); });
-  input.addEventListener("click", () => { if (popup.hidden) { input.value = ""; open(); } });
-  input.addEventListener("input", () => { open(); renderList(input.value); });
+  input.addEventListener("focus", () => { input.value = ""; open(); autosize(); });
+  input.addEventListener("click", () => { if (popup.hidden) { input.value = ""; open(); autosize(); } });
+  input.addEventListener("input", () => { open(); renderList(input.value); autosize(); });
   input.addEventListener("blur", () => close());
   input.addEventListener("keydown", (e) => {
     if (e.key === "ArrowDown") {
@@ -1451,9 +1468,9 @@ function createCombobox(container, { ariaLabelKey, onChange }) {
   return {
     applyI18n,
     has: (v) => items.some((i) => i.value === v),
-    setItems(newItems) { items = newItems.slice(); if (popup.hidden) input.value = labelFor(value); },
+    setItems(newItems) { items = newItems.slice(); if (popup.hidden) input.value = labelFor(value); autosize(); },
     get value() { return value; },
-    set value(v) { value = v; if (popup.hidden) input.value = labelFor(v); },
+    set value(v) { value = v; if (popup.hidden) input.value = labelFor(v); autosize(); },
   };
 }
 

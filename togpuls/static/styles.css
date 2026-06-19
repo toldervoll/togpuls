@@ -372,7 +372,9 @@ h2 {
 .combo-input {
   height: var(--ctrl-h);
   box-sizing: border-box;
-  width: 150px;
+  /* Width is driven by the `size` attribute (autosized in JS) so the field is
+     as narrow as its content, like the old native <select>. */
+  min-width: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface-2);
