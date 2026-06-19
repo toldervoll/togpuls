@@ -30,6 +30,10 @@ POLL_SEC = int(os.environ.get("TOGPULS_POLL_SEC", "30"))
 
 TIER_DOT = {"high": "🔴", "medium": "🟡", "low": "🟢"}
 TIER_RANK = {"high": 3, "medium": 2, "low": 1}
+# Effektiv alvorsrang, jf. SEVERITY_RANK + effSevRank() i static/app.js:
+# alert-tier overstyrer SIRI-severity. Lav rang = verre.
+SEVERITY_RANK = {"hoy": 0, "middels": 1, "lav": 2, "ukjent": 3}
+RANK_DOT = {0: "🔴", 1: "🟡", 2: "🟢"}  # ellers ▪︎ (ukjent)
 ALL_LABEL = "Alle avganger"
 
 # Dashbordet speiler ruten i URL-hash: #<fra>-<til> (kun tallet i NSR-id-en),
@@ -222,14 +226,14 @@ class TogpulsBar(rumps.App):
         lines.append("")
         lines.append(f"Avvik: {cancelled} innstilt · {delayed} forsinket >3 min")
 
-        # Situasjoner — prioriter høy risiko
-        ranked = sorted(sits, key=lambda s: TIER_RANK.get(self._tier(s), 0), reverse=True)
-        high = sum(1 for s in sits if self._tier(s) == "high")
+        # Situasjoner — grupper søsken-meldinger per hendelse, som dashbordet
+        groups = self._group_situations(sits)
+        high = sum(1 for g in groups if g["rank"] == 0)
         lines.append("")
-        lines.append(f"Situasjoner: {len(sits)} ({high} høy risiko)")
-        for s in ranked[:5]:
-            mark = TIER_DOT.get(self._tier(s), "▪︎")
-            lines.append(f"   {mark} {self._situation_text(s)}")
+        lines.append(f"Situasjoner: {len(groups)} ({high} høy risiko)")
+        for g in groups[:5]:
+            mark = RANK_DOT.get(g["rank"], "▪︎")
+            lines.append(f"   {mark} {self._group_text(g)}")
 
         lines.append("")
         lines.append(f"Sist oppdatert {datetime.now():%H:%M:%S}")
@@ -284,25 +288,62 @@ class TogpulsBar(rumps.App):
 
     # ---- situasjoner ---------------------------------------------------
 
-    @staticmethod
-    def _situation_text(s):
-        """Én linje: (berørte linjer) situasjon · årsak.
+    def _group_situations(self, sits):
+        """Slå sammen søsken-meldinger til hendelser, jf. groupSituations() i
+        app.js: nøkkel = event_id (ellers tekst), forén berørte linjer, og la
+        verste medlem (lavest effektiv rang) representere hendelsen."""
+        groups = {}
+        for s in sits:
+            text = (s.get("summary") or s.get("description") or "").strip() or "(uten tekst)"
+            key = s.get("event_id") or text
+            g = groups.get(key)
+            if g is None:
+                g = {"text": text, "lines": set(), "count": 0, "rank": 99,
+                     "cause_code": "", "cause_text": ""}
+                groups[key] = g
+            g["count"] += 1
+            for line in s.get("paavirker_linjer") or []:
+                g["lines"].add(line)
+            r = self._eff_rank(s)
+            if r < g["rank"]:
+                g["rank"] = r
+                g["text"] = text
+                g["cause_code"] = s.get("cause_code") or ""
+                g["cause_text"] = s.get("cause_text") or ""
+            elif not g["cause_code"] and not g["cause_text"]:
+                g["cause_code"] = s.get("cause_code") or ""
+                g["cause_text"] = s.get("cause_text") or ""
+        return sorted(groups.values(), key=lambda g: (g["rank"], -g["count"]))
 
-        Årsak er cause_text når den finnes, ellers cause_code-kategorien."""
+    def _eff_rank(self, s):
+        """Effektiv alvorsrang: alert-tier overstyrer SIRI-severity."""
+        tier = (self._tier(s) or "").lower()
+        if tier == "high":
+            sev = "hoy"
+        elif tier == "medium":
+            sev = "middels"
+        else:
+            sev = (s.get("severity") or "ukjent").lower()
+        return SEVERITY_RANK.get(sev, 3)
+
+    @staticmethod
+    def _group_text(g):
+        """Én linje: (berørte linjer) tekst · årsak [×antall]."""
         parts = []
-        linjer = s.get("paavirker_linjer") or []
+        linjer = sorted(g["lines"])
         if linjer:
             shown = ", ".join(linjer[:4])
             if len(linjer) > 4:
                 shown += f" +{len(linjer) - 4}"
             parts.append(f"({shown})")
-        summary = (s.get("summary") or "").strip()[:44]
-        if summary:
-            parts.append(summary)
+        if g["text"]:
+            parts.append(g["text"][:44])
         text = " ".join(parts)
-        cause = (s.get("cause_text") or "").strip() or (s.get("cause_code") or "").strip()
+        cause = (g["cause_text"] or "").strip() or (g["cause_code"] or "").strip()
         if cause:
             text += f" · {cause[:40]}"
+        if g["count"] > 1:
+            text += f" ×{g['count']}"
         return text
 
     @staticmethod
