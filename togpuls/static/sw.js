@@ -3,7 +3,7 @@
 // Network-first for /api/* so live data stays fresh when online,
 // with a tiny offline fallback so the UI doesn't crash if the network drops.
 
-const CACHE = "togpuls-shell-v1";
+const CACHE = "togpuls-shell-v2";
 const SHELL = [
   "/",
   "/static/styles.css",
@@ -44,20 +44,18 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Cache-first for the shell + static assets. Refresh from the network in the
-  // background so the next load picks up updates.
+  // Network-first for the shell + static assets: always fresh when online
+  // (no more stale HTML/CSS/JS after a deploy), with the cache as an offline
+  // fallback. Filenames aren't hashed, so cache-first would serve stale assets.
   event.respondWith(
-    caches.match(request).then((cached) => {
-      const networkFetch = fetch(request)
-        .then((res) => {
-          if (res.ok) {
-            const copy = res.clone();
-            caches.open(CACHE).then((c) => c.put(request, copy)).catch(() => {});
-          }
-          return res;
-        })
-        .catch(() => cached);
-      return cached || networkFetch;
-    })
+    fetch(request)
+      .then((res) => {
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(request, copy)).catch(() => {});
+        }
+        return res;
+      })
+      .catch(() => caches.match(request))
   );
 });
