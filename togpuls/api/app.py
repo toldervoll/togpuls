@@ -44,6 +44,17 @@ COMMON_STATIONS: dict[str, str] = {
     "NSR:StopPlace:548": "Bergen",
     "NSR:StopPlace:596": "Stavanger",
     "NSR:StopPlace:659": "Trondheim S",
+    "NSR:StopPlace:609": "Kristiansand",
+    "NSR:StopPlace:219": "Hamar",
+    "NSR:StopPlace:420": "Lillehammer",
+    "NSR:StopPlace:203": "Moss",
+    "NSR:StopPlace:610": "Sandvika",
+    "NSR:StopPlace:653": "Tønsberg",
+    "NSR:StopPlace:239": "Fredrikstad",
+    "NSR:StopPlace:94": "Sarpsborg",
+    "NSR:StopPlace:519": "Kongsberg",
+    "NSR:StopPlace:158": "Hønefoss",
+    "NSR:StopPlace:159": "Eidsvoll",
 }
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
