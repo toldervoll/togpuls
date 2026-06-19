@@ -483,7 +483,13 @@ async def _compute_analysis(
         # resolves. Keep these as plain low/info UNLESS KIX *and* live forward
         # data agree the lines are still actively disrupted; only then treat the
         # message like an incident. KIX or live alone is not enough.
-        if report_type == "general" and not (kix_tier and fwd_tier):
+        #
+        # An all-clear ("Toget kjører igjen", "Normal hastighet") is the
+        # exception: it must never read as an active high-risk incident. The
+        # forward disruption on its line belongs to the *real* incident — which
+        # is surfaced on its own card — not to this resolving message, so an
+        # all-clear stays informational regardless of KIX/live.
+        if report_type == "general" and (_is_all_clear(sit) or not (kix_tier and fwd_tier)):
             if alert is not None:
                 for k in ("cancel_rate", "trouble_rate", "alert_tier"):
                     alert.pop(k, None)
