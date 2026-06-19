@@ -581,6 +581,7 @@ def build_timeline(
             "departures": [],
         })
 
+    seen: set = set()  # dedup like analyse(): one call per (quay, time, journey)
     for resp in (past_response, future_response):
         if not resp:
             continue
@@ -591,6 +592,11 @@ def build_timeline(
                 aimed = _call_aimed(call)
                 if not aimed:
                     continue
+                sj_id = (call.get("serviceJourney") or {}).get("id") or ""
+                dedup_key = (quay.get("id", ""), aimed, sj_id)
+                if dedup_key in seen:
+                    continue
+                seen.add(dedup_key)
                 try:
                     ts = datetime.fromisoformat(aimed)
                 except (ValueError, TypeError):
@@ -627,6 +633,7 @@ def build_timeline(
                     "destination": dest.get("frontText") or "",
                     "aimed": aimed,
                     "delay_min": round(delay) if delay is not None and delay >= 1 else 0,
+                    "delayed": delayed,   # raw >3 min, matches train_movements
                     "cancelled": cancelled,
                 })
     for b in buckets:

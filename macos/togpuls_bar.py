@@ -294,7 +294,10 @@ class TogpulsBar(rumps.App):
                 if key in seen:
                     continue
                 seen.add(key)
-                if not dep.get("cancelled") and (dep.get("delay_min") or 0) <= 3:
+                delayed = dep.get("delayed")
+                if delayed is None:  # older API without the flag — derive it
+                    delayed = (dep.get("delay_min") or 0) > 3
+                if not dep.get("cancelled") and not delayed:
                     continue
                 dep["_when"] = when
                 out.append(dep)
