@@ -129,6 +129,14 @@ class TogpulsBar(rumps.App):
 
         return cb
 
+    def swap_direction(self, _):
+        """Bytt fra- og til-stasjon, som swap-pilen i dashbordet."""
+        if not self.to_id:
+            return
+        self.from_id, self.to_id = self.to_id, self.from_id
+        self.from_name, self.to_name = self.to_name, self.from_name
+        self.refresh(None)
+
     def open_dashboard(self, _):
         webbrowser.open(self._dashboard_url())
 
@@ -169,6 +177,10 @@ class TogpulsBar(rumps.App):
         items = []
         for i, text in enumerate(status_lines):
             items.append(rumps.MenuItem((text or " ") + ZWS * i))
+        # Klikk på header-linjen (fra → til ⇄) bytter retning, som swap-pilen
+        # i dashbordet. Kun i korridor-modus — som den deaktiverte pilen ellers.
+        if self.to_id and items:
+            items[0].set_callback(self.swap_direction)
         items += [
             None,
             rumps.MenuItem("Åpne dashbord", callback=self.open_dashboard),
@@ -209,7 +221,7 @@ class TogpulsBar(rumps.App):
         # Header
         win = (sp.get("window") or {}).get("minutter", HORIZON_MIN)
         if sp.get("to_name"):
-            head = f"{sp.get('name', self.from_name)} → {sp['to_name']}"
+            head = f"{sp.get('name', self.from_name)} → {sp['to_name']} ⇄"
         else:
             head = f"{sp.get('name', self.from_name)} · alle avganger"
         lines = [f"{head} · neste {win} min", ""]
