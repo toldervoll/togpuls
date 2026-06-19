@@ -555,7 +555,10 @@ async def health() -> dict:
     response_description="Liste av `{id, name}`.",
 )
 async def stations() -> list[dict]:
-    return [{"id": k, "name": v} for k, v in COMMON_STATIONS.items()]
+    # Oslo S (knutepunktet og default) først, resten alfabetisk på navn.
+    items = [{"id": k, "name": v} for k, v in COMMON_STATIONS.items()]
+    items.sort(key=lambda s: (s["id"] != DEFAULT_STOP_PLACE_ID, s["name"].lower()))
+    return items
 
 
 @app.get(
