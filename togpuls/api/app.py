@@ -43,6 +43,7 @@ COMMON_STATIONS: dict[str, str] = {
     "NSR:StopPlace:136": "Skien",
     "NSR:StopPlace:548": "Bergen",
     "NSR:StopPlace:596": "Stavanger",
+    "NSR:StopPlace:659": "Trondheim S",
 }
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
