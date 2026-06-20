@@ -219,7 +219,9 @@ const I18N_STRINGS = {
     ),
     "summary_sit_displaced": ", og ~{n} til fikk toget sitt kansellert og må finne et alternativ",
 
-    "footer": "togpuls · data: Entur Journey Planner v3 · oppdatering hver 30 s · buffer 20 s",
+    "footer_pre": "togpuls · data: ",
+    "footer_source": "Entur Journey Planner v3",
+    "footer_post": " · oppdatering hver 30 s · buffer 20 s",
     "footer_about": "Om",
     "footer_github": "GitHub",
     "footer_api": "API",
@@ -238,7 +240,9 @@ const I18N_STRINGS = {
     "about_source_h": "Kildekode",
     "about_source_b": "togpuls er åpen kildekode — FastAPI-backend og rammeverkfri frontend, uten byggesteg.",
     "about_source_link": "Se prosjektet på GitHub",
-    "about_footer_note": "Data: Entur Journey Planner v3 · NLOD-lisens",
+    "about_footer_pre": "Data: ",
+    "about_footer_source": "Entur Journey Planner v3",
+    "about_footer_post": " · NLOD-lisens",
   },
 
   en: {
@@ -440,7 +444,9 @@ const I18N_STRINGS = {
     ),
     "summary_sit_displaced": ", and ~{n} more had their train cancelled and need to find an alternative",
 
-    "footer": "togpuls · data: Entur Journey Planner v3 · refresh every 30 s · buffer 20 s",
+    "footer_pre": "togpuls · data: ",
+    "footer_source": "Entur Journey Planner v3",
+    "footer_post": " · refresh every 30 s · buffer 20 s",
     "footer_about": "About",
     "footer_github": "GitHub",
     "footer_api": "API",
@@ -459,7 +465,9 @@ const I18N_STRINGS = {
     "about_source_h": "Source code",
     "about_source_b": "togpuls is open source — a FastAPI backend and a framework-free frontend, with no build step.",
     "about_source_link": "View the project on GitHub",
-    "about_footer_note": "Data: Entur Journey Planner v3 · NLOD licence",
+    "about_footer_pre": "Data: ",
+    "about_footer_source": "Entur Journey Planner v3",
+    "about_footer_post": " · NLOD licence",
   },
 };
 
