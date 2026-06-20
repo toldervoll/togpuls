@@ -6,6 +6,30 @@ region: ams
 domains:
   - domain: togpuls.kengu.no
     type: PRIMARY
+  # Apex kengu.no hostes ikke her; den brukes kun til å redirecte til
+  # www.kengu.no (som serveres fra Cloudflare Pages). DigitalOcean DNS kan
+  # ikke CNAME-e apex selv, så denne appen står for redirecten. App Platform
+  # oppretter apex-DNS-recorden automatisk siden sonen ligger på DO.
+  - domain: kengu.no
+    type: ALIAS
+ingress:
+  rules:
+    # Treffer kun host kengu.no -> 301 til www. togpuls.kengu.no er upåvirket.
+    - match:
+        authority:
+          exact: kengu.no
+        path:
+          prefix: /
+      redirect:
+        authority: www.kengu.no
+        scheme: https
+        redirect_code: 301
+    # Alt annet (togpuls.kengu.no) går til web-komponenten som før.
+    - match:
+        path:
+          prefix: /
+      component:
+        name: web
 services:
   - name: web
     dockerfile_path: togpuls/Dockerfile
