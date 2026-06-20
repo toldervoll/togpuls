@@ -86,6 +86,19 @@ situations live from the API. Build it with `make macos-app`, and see
 [macos/README.md](macos/README.md) for details — including how to start it
 automatically at login (as a Login Item, or via a launchd agent).
 
+## Deployment
+
+Runs on DigitalOcean App Platform from `togpuls/deploy/app.yaml`
+(`doctl apps update <app-id> --spec togpuls/deploy/app.yaml`, or paste into the
+"Edit App Spec" UI). The `web` service builds from `togpuls/Dockerfile` and
+deploys on push to `main`. Primary domain: `togpuls.kengu.no`.
+
+The app also carries the apex `kengu.no` purely to redirect it. `kengu.no` is
+served (as `www.kengu.no`) from Cloudflare Pages, but DigitalOcean DNS cannot
+CNAME an apex, so an ingress rule here matches host `kengu.no` and 301-redirects
+to `https://www.kengu.no`. `togpuls.kengu.no` is unaffected (the rule matches the
+apex host only). See the kengu.no repo for the Pages side.
+
 ## Data source
 
 Entur Journey Planner v3, called with `ET-Client-Name: kengu-togpuls`.
