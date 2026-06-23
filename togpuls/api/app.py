@@ -120,9 +120,7 @@ async def _compute_analysis(
     situation_ids = collect_situation_ids(future_response) | collect_situation_ids(
         past_response
     )
-    estimates = await fetch_estimates(
-        situation_ids, client, from_stop=stop_place_id, to_stop=to_stop_place_id
-    )
+    estimates = await fetch_estimates(situation_ids, client)
 
     to_name = COMMON_STATIONS.get(to_stop_place_id) if to_stop_place_id else None
     analysis = analyse(

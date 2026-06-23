@@ -58,12 +58,7 @@ async def run(
         )
 
     async with httpx.AsyncClient() as client:
-        estimates = await fetch_estimates(
-            collect_situation_ids(response),
-            client,
-            from_stop=stop_place_id,
-            to_stop=to_stop_place_id,
-        )
+        estimates = await fetch_estimates(collect_situation_ids(response), client)
 
     return analyse(
         response,
