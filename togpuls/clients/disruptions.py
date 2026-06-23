@@ -1,8 +1,9 @@
 """HTTP client for the disruption-impact service.
 
-Predicts cancellation probability and delay for the SIRI situations on a
-from→to corridor. Best-effort enrichment: any upstream failure maps to an
-empty result so a flaky impact service never breaks the analysis.
+Predicts how the situations affecting a from→to corridor impact the trains a
+passenger's trip depends on (cancellation probability and delay at the boarding
+and alighting stops). Best-effort enrichment: any upstream failure maps to an
+empty dict so a flaky service never breaks the analysis.
 """
 
 from __future__ import annotations
@@ -14,39 +15,43 @@ DISRUPTION_ESTIMATE_URL = "http://localhost:8008/impact"
 
 async def fetch_estimates(
     client: httpx.AsyncClient,
-    from_stop: str | None,
+    from_stop: str,
     to_stop: str | None = None,
+    at: str | None = None,
 ) -> dict[str, object]:
-    """Fetch disruption impact predictions for a corridor.
+    """Fetch per-situation impact predictions for a corridor.
 
-    A single request to the /impact endpoint returns predictions for every
-    SIRI situation on the ``from_stop`` → ``to_stop`` corridor. The stops are
-    NSR stop place IDs (e.g. ``NSR:StopPlace:337``); ``to_stop`` is None when
-    no destination is selected (all directions).
+    A single call to /impact scores the trains the passenger's trip depends on
+    — ``from_stop`` (boarding) → optional ``to_stop`` (alighting), as NSR stop
+    place IDs (e.g. ``NSR:StopPlace:337``) — and returns the situations
+    affecting it, each with a departure (and, when ``to_stop`` is given,
+    arrival) prediction. ``at`` is the intended departure time (ISO 8601) used
+    to pick, per line, the affected train closest to it; defaults to now when
+    omitted.
 
-    Returns a dict keyed by ``situation_number`` — the same key `analyse()`
-    looks up — with each value being that situation's entry from the response
-    (its ``summary`` plus ``departure_prediction`` / ``arrival_prediction``).
-    Returns {} when there is no origin to query, or on any upstream failure.
-    Never raises — failures are swallowed.
+    Returns a dict keyed by SIRI-SX situationNumber so it lines up with the
+    situation entries built in ``analyse()``; each value is that situation's
+    impact object. Returns {} on any upstream failure or when nothing affects
+    the trip — never raises.
     """
-    if not from_stop:
-        return {}
     params = {"from_stop": from_stop}
     if to_stop:
         params["to_stop"] = to_stop
+    if at:
+        params["at"] = at
     try:
-        resp = await client.get(DISRUPTION_ESTIMATE_URL, params=params, timeout=10.0)
+        resp = await client.get(
+            DISRUPTION_ESTIMATE_URL,
+            params=params,
+            timeout=10.0,
+        )
         resp.raise_for_status()
-        payload = resp.json()
+        data = resp.json()
     except (httpx.HTTPError, ValueError):
         return {}
-
-    situations = payload.get("situations") if isinstance(payload, dict) else None
-    if not isinstance(situations, list):
-        return {}
+    situations = data.get("situations") if isinstance(data, dict) else None
     return {
         sit["situation_number"]: sit
-        for sit in situations
+        for sit in (situations or [])
         if isinstance(sit, dict) and sit.get("situation_number")
     }

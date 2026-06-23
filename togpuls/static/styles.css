@@ -931,13 +931,6 @@ h2 {
 .sit-sev.sev-hoy     { color: var(--sev-hoy); }
 .sit-sev.sev-middels { color: var(--sev-middels); }
 .sit-sev.sev-lav     { color: var(--sev-lav); }
-/* Alert tier reuses the severity palette in the left chip + border */
-.sit-sev.tier-low    { color: var(--sev-lav); }
-.sit-sev.tier-medium { color: var(--sev-middels); }
-.sit-sev.tier-high   { color: var(--sev-hoy); }
-.sit-list li.tier-low    { border-left-color: var(--sev-lav); }
-.sit-list li.tier-medium { border-left-color: var(--sev-middels); }
-.sit-list li.tier-high   { border-left-color: var(--sev-hoy); }
 
 .sit-body  { display: grid; gap: 3px; }
 .sit-body.has-meters {
@@ -984,7 +977,7 @@ h2 {
   white-space: nowrap;
 }
 .sit-estimate::before { content: "⏱"; font-weight: normal; }
-.sit-estimate.overdue { color: var(--sev-hoy); border-color: var(--sev-hoy); }
+.sit-estimate.high-risk { color: var(--sev-hoy); border-color: var(--sev-hoy); }
 .sit-count-badge {
   background: var(--surface-3);
   color: var(--accent);

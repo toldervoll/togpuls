@@ -117,32 +117,62 @@ function fmtDurationMin(mins) {
   return r ? t("dur_hm", { h, m: r }) : t("dur_h", { h });
 }
 
-// The disruption-estimate service returns an `impact` block predicting when
-// the situation clears: point_min_from_now plus a p50/p80/p90 spread and an
-// `overdue` flag. Render the point estimate as a short ETA; tolerate a missing
-// or differently-shaped payload by returning "" (nothing shown).
+// The disruption-impact service scores the train the passenger's trip depends
+// on. Per situation it returns a `departure_prediction` (boarding stop — will
+// it leave, how late?) and, when a destination is selected, an
+// `arrival_prediction` (alighting stop). Each prediction carries
+// cancel_probability (0-1) and typical / p90 delay in minutes. Render the
+// boarding prediction as a chip; tolerate a missing or differently-shaped
+// payload by returning "" (nothing shown).
+function departurePrediction(est) {
+  return est && typeof est === "object" ? est.departure_prediction : null;
+}
+
+// Chip text: typical delay when the train runs late, else a cancel-risk note
+// when cancellation is non-trivial, else "" (nothing worth flagging).
 function formatEstimate(est) {
-  const impact = est && typeof est === "object" ? est.impact : null;
-  if (!impact || typeof impact !== "object") return "";
-  if (impact.overdue === true) return t("sit_est_overdue");
-  const mins = typeof impact.point_min_from_now === "number"
-    ? impact.point_min_from_now
-    : (typeof impact.p50_min_from_now === "number" ? impact.p50_min_from_now : null);
-  if (mins === null || mins <= 0) return "";
-  return t("sit_est_eta", { dur: fmtDurationMin(mins) });
+  const dep = departurePrediction(est);
+  if (!dep || typeof dep !== "object") return "";
+  if (typeof dep.delay_typ_min === "number" && dep.delay_typ_min > 0) {
+    return t("sit_delay", { dur: fmtDurationMin(dep.delay_typ_min) });
+  }
+  if (typeof dep.cancel_probability === "number" && dep.cancel_probability >= CANCEL_PROB_ALERT) {
+    return t("sit_cancel_risk", { pct: fmtPct(dep.cancel_probability) });
+  }
+  return "";
+}
+
+// One "<stop>: delay typically +typ (p90 +p90) · cancel pct" line for a
+// prediction, or "" when it carries nothing.
+function predictionLine(pred, labelKey) {
+  if (!pred || typeof pred !== "object") return "";
+  const bits = [];
+  if (typeof pred.delay_typ_min === "number") {
+    let d = t("sit_tip_delay", { dur: fmtDurationMin(pred.delay_typ_min) });
+    if (typeof pred.delay_p90_min === "number") {
+      d += " " + t("sit_tip_p90", { dur: fmtDurationMin(pred.delay_p90_min) });
+    }
+    bits.push(d);
+  }
+  if (typeof pred.cancel_probability === "number") {
+    bits.push(t("sit_tip_cancel", { pct: fmtPct(pred.cancel_probability) }));
+  }
+  if (!bits.length) return "";
+  const stop = pred.stop_name ? pred.stop_name + ": " : "";
+  return t(labelKey, { stop, detail: bits.join(" · ") });
 }
 
 function estimateTooltip(est) {
-  const impact = est && typeof est === "object" ? est.impact : null;
-  if (!impact) return "";
-  const parts = [];
-  if (typeof impact.p50_min_from_now === "number") parts.push("p50 " + fmtDurationMin(impact.p50_min_from_now));
-  if (typeof impact.p90_min_from_now === "number") parts.push("p90 " + fmtDurationMin(impact.p90_min_from_now));
-  return parts.length ? t("sit_est_tooltip", { spread: parts.join(" · ") }) : "";
+  const lines = [];
+  const dep = predictionLine(est && est.departure_prediction, "sit_tip_dep");
+  if (dep) lines.push(dep);
+  const arr = predictionLine(est && est.arrival_prediction, "sit_tip_arr");
+  if (arr) lines.push(arr);
+  return lines.join("\n");
 }
 
 // Fill the .sit-estimate node in a rendered <li>, or remove it when there is
-// no usable estimate.
+// nothing worth showing.
 function applyEstimate(li, est) {
   const el = li.querySelector(".sit-estimate");
   if (!el) return;
@@ -152,80 +182,68 @@ function applyEstimate(li, est) {
     return;
   }
   el.textContent = txt;
-  if (est && est.impact && est.impact.overdue === true) el.classList.add("overdue");
+  const dep = departurePrediction(est);
+  const highRisk = dep && (
+    (typeof dep.cancel_probability === "number" && dep.cancel_probability >= CANCEL_PROB_ALERT) ||
+    (typeof dep.delay_typ_min === "number" && dep.delay_typ_min >= DELAY_ALERT_MIN)
+  );
+  if (highRisk) el.classList.add("high-risk");
   const tip = estimateTooltip(est);
   if (tip) el.title = tip;
 }
 
-// ── Alert metrics (estimate.alert) ──────────────────────────────────────
-// The estimate service returns an `alert` block with a risk tier and two
-// base rates. The tier replaces the SIRI severity word in the left chip;
-// the rates become small LED meters left of the text.
+// ── Prediction meters (boarding-stop departure_prediction) ───────────────
+// cancel_probability and typical delay become small LED meters left of the
+// text: a cancellation meter (x icon) and a delay meter (clock icon).
 const LED_SEGMENTS = 5;
 const LED_HTML = "<i></i>".repeat(LED_SEGMENTS);
-// Display scale: a rate at/above this lights the whole meter. Exact value is
+// Display scale: a value at/above this lights the whole meter. Exact value is
 // always in the tooltip — the LEDs are a glanceable relative indicator.
-const CANCEL_RATE_FULL = 0.1; // 10% cancellations
-const TROUBLE_RATE_FULL = 0.3; // 30% trouble
-const TIER_SEV = { low: "lav", medium: "middels", high: "hoy" };
+const CANCEL_PROB_FULL = 0.5; // 50% chance the train is cancelled
+const DELAY_FULL_MIN = 30;    // 30 min typical delay
+// The chip turns red past either of these.
+const CANCEL_PROB_ALERT = 0.15;
+const DELAY_ALERT_MIN = 10;
 
-function fmtRate(x) {
-  if (typeof x !== "number" || isNaN(x)) return "—";
-  return new Intl.NumberFormat(intlLocale(), {
-    style: "percent",
-    maximumFractionDigits: 1,
-  }).format(x);
-}
-
-// Light the first N LED segments proportional to rate/full; remove the meter
-// entirely when the rate is missing.
-function renderRateMeter(el, rate, full, kind) {
+// Light the first N LED segments proportional to value/full; remove the meter
+// entirely when the value is missing.
+function renderMeter(el, value, full, label) {
   if (!el) return;
-  if (typeof rate !== "number" || isNaN(rate)) {
+  if (typeof value !== "number" || isNaN(value)) {
     el.remove();
     return;
   }
-  const lit = rate > 0
-    ? Math.min(LED_SEGMENTS, Math.max(1, Math.ceil((rate / full) * LED_SEGMENTS)))
+  const lit = value > 0
+    ? Math.min(LED_SEGMENTS, Math.max(1, Math.ceil((value / full) * LED_SEGMENTS)))
     : 0;
   el.querySelectorAll(".leds i").forEach((seg, i) => seg.classList.toggle("on", i < lit));
-  const label = t(kind === "cancel" ? "rate_cancel" : "rate_trouble", { pct: fmtRate(rate) });
   el.title = label;
   el.setAttribute("aria-label", label);
 }
 
-// Set the left chip (tier when available, else SIRI severity) and the two
-// rate meters for a rendered situation <li>.
-function applyAlert(li, sev, est) {
-  const alert = est && typeof est === "object" ? est.alert : null;
-  const tierRaw = alert && typeof alert.alert_tier === "string"
-    ? alert.alert_tier.toLowerCase()
-    : null;
-  const tier = tierRaw && TIER_SEV[tierRaw] ? tierRaw : null;
-
+// Set the SIRI severity chip and the cancel / delay meters (from the boarding
+// prediction) for a rendered situation <li>.
+function applyPrediction(li, sev, est) {
   const sevEl = li.querySelector(".sit-sev");
   if (sevEl) {
-    if (tier) {
-      sevEl.textContent = t(`tier_label.${tier}`);
-      sevEl.className = `sit-sev tier-${tier}`;
-      li.classList.add(`tier-${tier}`);
-    } else {
-      sevEl.textContent = severityLabel(sev);
-      sevEl.className = `sit-sev sev-${sev}`;
-    }
+    sevEl.textContent = severityLabel(sev);
+    sevEl.className = `sit-sev sev-${sev}`;
   }
 
   const meters = li.querySelector(".sit-meters");
   if (!meters) return;
-  const hasCancel = alert && typeof alert.cancel_rate === "number";
-  const hasTrouble = alert && typeof alert.trouble_rate === "number";
-  if (!hasCancel && !hasTrouble) {
+  const dep = departurePrediction(est);
+  const cancel = dep && typeof dep.cancel_probability === "number" ? dep.cancel_probability : null;
+  const delay = dep && typeof dep.delay_typ_min === "number" ? dep.delay_typ_min : null;
+  if (cancel === null && delay === null) {
     meters.remove();
     return;
   }
   li.querySelector(".sit-body")?.classList.add("has-meters");
-  renderRateMeter(meters.querySelector(".meter-cancel"), hasCancel ? alert.cancel_rate : null, CANCEL_RATE_FULL, "cancel");
-  renderRateMeter(meters.querySelector(".meter-trouble"), hasTrouble ? alert.trouble_rate : null, TROUBLE_RATE_FULL, "trouble");
+  renderMeter(meters.querySelector(".meter-cancel"), cancel, CANCEL_PROB_FULL,
+    t("rate_cancel", { pct: fmtPct(cancel) }));
+  renderMeter(meters.querySelector(".meter-trouble"), delay, DELAY_FULL_MIN,
+    t("rate_delay", { dur: fmtDurationMin(delay) }));
 }
 
 function renderLineStatus(cell, cancelledLines, delayedLines) {
@@ -420,7 +438,7 @@ function renderSituations(sits) {
         ${countBadge}`;
       li.querySelector(".sit-text").textContent = r.line;
       li.querySelector(".sit-lines").textContent = r.texts.join(" · ");
-      applyAlert(li, sev, r.estimate);
+      applyPrediction(li, sev, r.estimate);
       applyEstimate(li, r.estimate);
       ul.appendChild(li);
     }
@@ -447,7 +465,7 @@ function renderSituations(sits) {
         ${countBadge}`;
       li.querySelector(".sit-text").textContent = g.text;
       li.querySelector(".sit-lines").textContent = lines ? t("sit_lines_prefix", { lines }) : "";
-      applyAlert(li, sev, g.estimate);
+      applyPrediction(li, sev, g.estimate);
       applyEstimate(li, g.estimate);
       ul.appendChild(li);
     }

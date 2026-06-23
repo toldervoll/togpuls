@@ -19,7 +19,7 @@ from datetime import datetime
 
 import httpx
 
-from togpuls.analysis import analyse, collect_situation_ids
+from togpuls.analysis import analyse
 from togpuls.clients.disruptions import fetch_estimates
 from togpuls.clients.journey_planner import query_stop_place_departures
 from togpuls.models import Analysis
@@ -58,7 +58,12 @@ async def run(
         )
 
     async with httpx.AsyncClient() as client:
-        estimates = await fetch_estimates(collect_situation_ids(response), client)
+        estimates = await fetch_estimates(
+            client,
+            from_stop=stop_place_id,
+            to_stop=to_stop_place_id,
+            at=now.isoformat(),
+        )
 
     return analyse(
         response,

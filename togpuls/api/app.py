@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from togpuls.analysis import analyse, build_timeline, collect_situation_ids
+from togpuls.analysis import analyse, build_timeline
 from togpuls.api.cache import TTLCache
 from togpuls.clients.disruptions import fetch_estimates
 from togpuls.clients.journey_planner import query_stop_place_departures
@@ -117,10 +117,12 @@ async def _compute_analysis(
             ),
         )
 
-    situation_ids = collect_situation_ids(future_response) | collect_situation_ids(
-        past_response
+    estimates = await fetch_estimates(
+        client,
+        from_stop=stop_place_id,
+        to_stop=to_stop_place_id,
+        at=now.isoformat(),
     )
-    estimates = await fetch_estimates(situation_ids, client)
 
     to_name = COMMON_STATIONS.get(to_stop_place_id) if to_stop_place_id else None
     analysis = analyse(
