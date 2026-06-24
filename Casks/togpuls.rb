@@ -1,6 +1,6 @@
 cask "togpuls" do
-  version "0.1.1"
-  sha256 "4ebed3c7dcaa4eb67033c34ea486d2b9fe85570b5a606c30ae3eb780ee5b86a0"
+  version "0.1.2"
+  sha256 "ac7daac09760e2ac4865b9db61924824fdc57cda65bc2c149fbf2b7d0f64f5c9"
 
   url "https://github.com/kengu/togpuls/releases/download/macos-v#{version}/Togpuls-#{version}.dmg"
   name "Togpuls"
