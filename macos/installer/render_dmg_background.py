@@ -1,9 +1,16 @@
 """Genererer bakgrunnsbildet til Togpuls-DMG-en.
 
-Brand-trofast layout: navy gradient (Lavender 90 → 100), pulserende ringer
-rundt der app-ikonet plasseres, mintgrønne stegmerker, og selve Togpuls-
-merket i tittelen. Ikon-koordinatene må stemme med ``create-dmg``-targeten
-i Makefile.
+Layouten skal være selv-forklarende: brukeren skal kunne fullføre hele
+installasjonen ved å se på DMG-vinduet, uten å besøke nettsiden. Derfor
+har bakgrunnen tre lag tekst:
+
+* Brand-merke og tittel øverst.
+* «Dra Togpuls til Applications» med visuell pil mellom ikonene.
+* Privacy-detouren beskrevet eksplisitt under, så ingen blir overrasket
+  av Gatekeeper-dialogen på macOS Sequoia 26 og nyere.
+* En liten henvisning til ``togpuls.kengu.no/install`` for full guide.
+
+Ikon-koordinatene må stemme med ``create-dmg``-targeten i Makefile.
 
 Kjør (fra repo-rot)::
 
@@ -21,7 +28,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 
-WIDTH, HEIGHT = 600, 400
+WIDTH, HEIGHT = 640, 460
 
 # Brand-paletten (fra togpuls/static/styles.css).
 LAV_100 = (17, 20, 60)
@@ -36,9 +43,8 @@ MINT_40 = (90, 195, 154)
 WHITE = (255, 255, 255)
 
 # Posisjonene create-dmg plasserer ikonene på (må stemme med Makefile).
-TOGPULS_XY = (150, 180)
-APPS_XY = (450, 180)
-INSTALLER_XY = (300, 320)
+TOGPULS_XY = (190, 195)
+APPS_XY = (450, 195)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -61,7 +67,6 @@ def _font(size: int) -> ImageFont.ImageFont:
 
 
 def _gradient(w: int, h: int, top: tuple, bottom: tuple) -> Image.Image:
-    """Vertikal gradient — én linje per y."""
     img = Image.new("RGB", (w, h), top)
     draw = ImageDraw.Draw(img)
     for y in range(h):
@@ -72,7 +77,6 @@ def _gradient(w: int, h: int, top: tuple, bottom: tuple) -> Image.Image:
 
 
 def _radial_glow(size: tuple, center: tuple, color: tuple, max_radius: int) -> Image.Image:
-    """Lag et radialt glow-lag som tones mykt ut fra center."""
     layer = Image.new("RGBA", size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
     cx, cy = center
@@ -92,7 +96,6 @@ def _draw_text_centered(draw, xy, text, font, fill):
 
 
 def _pulse_rings(img: Image.Image, center: tuple, radii_alpha) -> None:
-    """Konsentriske ringer som speiler «pulsen» fra Togpuls-merket."""
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
     cx, cy = center
@@ -106,54 +109,16 @@ def _pulse_rings(img: Image.Image, center: tuple, radii_alpha) -> None:
     img.alpha_composite(layer)
 
 
-def _step_badge(img: Image.Image, center: tuple, number: int) -> None:
-    """Mintgrønt nummerert merke med myk skygge."""
-    r = 22
-    cx, cy = center
-
-    # Skygge under merket.
-    shadow = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    sdraw = ImageDraw.Draw(shadow)
-    sdraw.ellipse((cx - r, cy - r + 4, cx + r, cy + r + 4), fill=(0, 0, 0, 110))
-    shadow = shadow.filter(ImageFilter.GaussianBlur(radius=5))
-    img.alpha_composite(shadow)
-
-    # Selve merket — med en lysere kant for litt 3D-følelse.
-    badge = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    bdraw = ImageDraw.Draw(badge)
-    bdraw.ellipse((cx - r - 1, cy - r - 1, cx + r + 1, cy + r + 1), fill=MINT_40 + (255,))
-    bdraw.ellipse((cx - r, cy - r, cx + r, cy + r), fill=MINT_60 + (255,))
-
-    font = _font(20)
-    bbox = bdraw.textbbox((0, 0), str(number), font=font)
-    tw = bbox[2] - bbox[0]
-    th = bbox[3] - bbox[1]
-    bdraw.text(
-        (cx - tw / 2, cy - th / 2 - bbox[1]),
-        str(number),
-        font=font,
-        fill=WHITE + (255,),
-    )
-    img.alpha_composite(badge)
-
-
 def _arrow(img: Image.Image, x0: int, x1: int, y: int) -> None:
-    """Pen pil fra (x0, y) til (x1, y) i lavender, med rundede endepunkt."""
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
     color = LAV_40 + (235,)
-
-    # Stilken
     draw.line((x0, y, x1 - 14, y), fill=color, width=3)
-    # Rundt startpunkt
     draw.ellipse((x0 - 4, y - 4, x0 + 4, y + 4), fill=color)
-    # Pilspiss
     draw.polygon(
         [(x1, y), (x1 - 16, y - 10), (x1 - 16, y + 10)],
         fill=color,
     )
-
-    # Liten skygge under pilen.
     glow = layer.filter(ImageFilter.GaussianBlur(radius=2))
     img.alpha_composite(glow)
     img.alpha_composite(layer)
@@ -165,20 +130,12 @@ def _hairline(img: Image.Image, xy0: tuple, xy1: tuple, alpha: int = 60) -> None
     img.alpha_composite(layer)
 
 
-def _brand_mark(
-    img: Image.Image,
-    center: tuple,
-    size: int,
-    spoke_color: tuple = LAV_40,
-    dot_color: tuple = MINT_60,
-    alpha: int = 255,
-) -> None:
+def _brand_mark(img: Image.Image, center: tuple, size: int) -> None:
     """Tegn Togpuls-merket (8 eiker + senterdisc + mintprikk) programmatisk.
 
     Geometrien er skalert fra ``togpuls/static/icons/icon.svg`` (viewBox 512×512:
     eiker fra senter til radius 150, stroke 22; senterdisc r=44; prikk r=20).
     """
-
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
     cx, cy = center
@@ -190,26 +147,24 @@ def _brand_mark(
     dot_r = max(2, int(round(20 * scale)))
     half = stroke / 2
 
-    sc = spoke_color + (alpha,)
+    sc = LAV_40 + (255,)
     for i in range(8):
         angle = math.radians(i * 45)
         x1 = cx + spoke_len * math.cos(angle)
         y1 = cy + spoke_len * math.sin(angle)
         draw.line((cx, cy, x1, y1), fill=sc, width=stroke)
-        # Rundt endepunkt så eikene ikke har skarpe kuttkanter.
         draw.ellipse((x1 - half, y1 - half, x1 + half, y1 + half), fill=sc)
 
     draw.ellipse((cx - disc_r, cy - disc_r, cx + disc_r, cy + disc_r), fill=sc)
     draw.ellipse(
         (cx - dot_r, cy - dot_r, cx + dot_r, cy + dot_r),
-        fill=dot_color + (alpha,),
+        fill=MINT_60 + (255,),
     )
 
     img.alpha_composite(layer)
 
 
 def _title(img: Image.Image, draw: ImageDraw.ImageDraw) -> None:
-    """Brand-merket og tittel sentrert øverst."""
     title_font = _font(28)
     subtitle_font = _font(12)
 
@@ -221,7 +176,7 @@ def _title(img: Image.Image, draw: ImageDraw.ImageDraw) -> None:
     text_h = bbox[3] - bbox[1]
     total_w = mark_size + gap + text_w
     left = (WIDTH - total_w) // 2
-    top = 22
+    top = 28
 
     cx, cy = left + mark_size // 2, top + mark_size // 2
 
@@ -250,37 +205,112 @@ def _title(img: Image.Image, draw: ImageDraw.ImageDraw) -> None:
     )
 
 
+def _numbered_step(
+    draw: ImageDraw.ImageDraw,
+    img: Image.Image,
+    center_y: int,
+    number: str,
+    lines: list,
+    accent: bool = False,
+) -> None:
+    """Tegn et nummerert steg: «1.»-prefiks i mint, tekst i lavender.
+
+    ``lines`` er en liste med strenger (én pr. linje). Hele blokken
+    sentreres horisontalt rundt WIDTH/2 med tallet til venstre.
+    """
+    num_font = _font(15)
+    body_font = _font(14)
+
+    # Mål total bredde for sentrering.
+    num_bbox = draw.textbbox((0, 0), number, font=num_font)
+    num_w = num_bbox[2] - num_bbox[0]
+    line_widths = []
+    for line in lines:
+        lb = draw.textbbox((0, 0), line, font=body_font)
+        line_widths.append(lb[2] - lb[0])
+    max_line_w = max(line_widths)
+
+    gap = 10
+    total_w = num_w + gap + max_line_w
+    left = (WIDTH - total_w) // 2
+
+    # Nummeret — i mint som matchner brand-prikken, vertikalt sentrert på
+    # første linje.
+    line_h = body_font.size + 4
+    first_line_y = center_y - (len(lines) - 1) * line_h / 2
+    num_color = MINT_40 if accent else MINT_60
+    draw.text(
+        (left, first_line_y - num_bbox[3] / 2 - num_bbox[1]),
+        number,
+        font=num_font,
+        fill=num_color + (255,),
+    )
+
+    # Body-tekst — venstrejustert under tallet.
+    text_x = left + num_w + gap
+    for i, line in enumerate(lines):
+        y = first_line_y + i * line_h
+        lb = draw.textbbox((0, 0), line, font=body_font)
+        h = lb[3] - lb[1]
+        draw.text(
+            (text_x, y - h / 2 - lb[1]),
+            line,
+            font=body_font,
+            fill=LAV_10 + (235,),
+        )
+
+
 def render(out: Path) -> None:
     base = _gradient(WIDTH, HEIGHT, LAV_70, LAV_90).convert("RGBA")
 
-    # Mykt radialt glow rundt der app-ikonet ligger — det «pulserer» ut fra ikonet.
+    # Myk radial glød der ikonene plasseres — knytter dem til bakgrunnen.
     base.alpha_composite(_radial_glow(base.size, TOGPULS_XY, LAV_60, 180))
-    base.alpha_composite(_radial_glow(base.size, INSTALLER_XY, LAV_60, 140))
+    base.alpha_composite(_radial_glow(base.size, APPS_XY, LAV_60, 140))
 
     draw = ImageDraw.Draw(base)
 
-    # Topp-tittel med brand-ikon.
     _title(base, draw)
-    _hairline(base, (160, 120), (440, 120), alpha=55)
+    _hairline(base, (180, 120), (WIDTH - 180, 120), alpha=55)
 
-    # Konsentriske pulse-ringer rundt ikonposisjonene.
+    # Pulsringer rundt Togpuls-ikonet — vår identitet, ikke Applications'.
     _pulse_rings(
         base,
         TOGPULS_XY,
         [(72, 80), (96, 55), (122, 32), (150, 18)],
     )
-    _pulse_rings(
+
+    # Pil fra Togpuls til Applications.
+    _arrow(base, TOGPULS_XY[0] + 64, APPS_XY[0] - 60, TOGPULS_XY[1])
+
+    # Steg-tekst under ikonene. Plassering må klare av ikon-etikettene
+    # som Finder rendrer rundt y=240 (icon-size 96 + label-høyde).
+    _numbered_step(
+        draw,
         base,
-        INSTALLER_XY,
-        [(60, 90), (84, 60), (108, 35), (132, 18)],
+        center_y=295,
+        number="1.",
+        lines=["Dra Togpuls til Applications-mappen til høyre."],
+    )
+    _numbered_step(
+        draw,
+        base,
+        center_y=355,
+        number="2.",
+        lines=[
+            "Første gang du åpner Togpuls: Systeminnstillinger →",
+            "Personvern og sikkerhet → «Åpne likevel».",
+        ],
     )
 
-    # Nummererte stegmerker til venstre for hvert ikon.
-    _step_badge(base, (52, TOGPULS_XY[1]), 1)
-    _step_badge(base, (52, INSTALLER_XY[1]), 2)
-
-    # Pil mellom Togpuls og Applications.
-    _arrow(base, TOGPULS_XY[0] + 64, APPS_XY[0] - 60, TOGPULS_XY[1])
+    # Henvisning til full guide nederst.
+    footer_font = _font(11)
+    _draw_text_centered(
+        draw,
+        (WIDTH / 2, HEIGHT - 24),
+        "Full installasjonsguide: togpuls.kengu.no/install",
+        footer_font,
+        LAV_40 + (180,),
+    )
 
     out.parent.mkdir(parents=True, exist_ok=True)
     base.convert("RGB").save(out, "PNG", optimize=True)

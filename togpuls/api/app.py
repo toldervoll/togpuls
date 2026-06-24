@@ -344,7 +344,7 @@ app.add_middleware(
 async def no_cache_static(request, call_next):
     response = await call_next(request)
     path = request.url.path
-    if path in ("/", "/about", "/sw.js") or path.startswith("/static"):
+    if path in ("/", "/about", "/install", "/sw.js") or path.startswith("/static"):
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
@@ -543,6 +543,11 @@ async def root() -> FileResponse:
 @app.get("/about", include_in_schema=False)
 async def about() -> FileResponse:
     return FileResponse(STATIC_DIR / "about.html")
+
+
+@app.get("/install", include_in_schema=False)
+async def install() -> FileResponse:
+    return FileResponse(STATIC_DIR / "install.html")
 
 
 @app.get("/sw.js", include_in_schema=False)

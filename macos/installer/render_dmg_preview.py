@@ -20,7 +20,6 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 from render_dmg_background import (
     APPS_XY,
-    INSTALLER_XY,
     LAV_10,
     LAV_40,
     LAV_60,
@@ -122,25 +121,6 @@ def _applications_icon() -> Image.Image:
     return img
 
 
-def _installer_command_icon() -> Image.Image:
-    """Generisk «shell-script»-ikon: terminal-vindu med >_ prompt."""
-    size = ICON_SIZE
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    # Vindusramme
-    draw.rounded_rectangle(
-        (4, 8, size - 4, size - 8), radius=12, fill=(20, 24, 60, 255)
-    )
-    # Tittellinje med "trafikk-lys"
-    draw.rounded_rectangle((4, 8, size - 4, 26), radius=12, fill=(40, 47, 110, 255))
-    for i, color in enumerate([(255, 95, 86), (255, 189, 46), (39, 201, 63)]):
-        draw.ellipse((12 + i * 12, 14, 20 + i * 12, 22), fill=color + (255,))
-    # Prompt
-    font = _font(22)
-    draw.text((16, 38), ">_", font=font, fill=(174, 240, 200, 255))
-    return img
-
-
 def render(out: Path) -> None:
     # Bygg bakgrunnen i en midlertidig fil og åpne den som RGBA-canvas.
     tmp_bg = Path("/tmp/_dmg_bg_preview.png")
@@ -148,21 +128,17 @@ def render(out: Path) -> None:
     canvas = Image.open(tmp_bg).convert("RGBA")
 
     # Skygger under ikonene gir dybde.
-    for xy in (TOGPULS_XY, APPS_XY, INSTALLER_XY):
+    for xy in (TOGPULS_XY, APPS_XY):
         _shadow_under(canvas, xy, ICON_SIZE)
 
     # Plasser ikonene på samme koordinater som create-dmg vil bruke.
     _paste_centered(canvas, _togpuls_app_icon(), TOGPULS_XY)
     _paste_centered(canvas, _applications_icon(), APPS_XY)
-    _paste_centered(canvas, _installer_command_icon(), INSTALLER_XY)
 
     draw = ImageDraw.Draw(canvas)
     label_offset_y = ICON_SIZE // 2 + 10
     _draw_label(draw, "Togpuls", TOGPULS_XY[0], TOGPULS_XY[1] + label_offset_y)
     _draw_label(draw, "Applications", APPS_XY[0], APPS_XY[1] + label_offset_y)
-    _draw_label(
-        draw, "Installer.command", INSTALLER_XY[0], INSTALLER_XY[1] + label_offset_y
-    )
 
     # Vindusramme (titlebar + grå kant) for å gi inntrykk av Finder-vinduet.
     frame = Image.new("RGBA", (WIDTH, HEIGHT + 22), (236, 236, 236, 255))

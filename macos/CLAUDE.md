@@ -122,15 +122,22 @@ Gatekeeper med `xattr`.
 
 Bygger `macos/dist/Togpuls-<versjon>.dmg`. Avhenger av `create-dmg`
 (`brew install create-dmg`). DMG-vinduet har Togpuls-ikonet og en
-Applications-symlenke, pluss en `Installer.command` som brukeren
-dobbeltklikker etter at app-en er dratt over. Scriptet kjører `xattr
--dr com.apple.quarantine` på app-en og starter den. Bakgrunnsbildet
-genereres av `macos/installer/render_dmg_background.py` (Pillow) første
-gang `macos-dmg` kjøres, og caches deretter.
+Applications-symlenke. Bakgrunnsbildet genereres av
+`macos/installer/render_dmg_background.py` (Pillow) første gang
+`macos-dmg` kjøres, og caches deretter. Bakgrunnen er selv-forklarende:
+to nummererte steg (drag-til-Applications + Privacy-detouren) og en
+henvisning til `togpuls.kengu.no/install` for full guide.
 
 App-en signeres ad-hoc (`codesign --sign -`) før DMG-en pakkes —
 påkrevd for at arm64-binærer i det hele tatt skal kjøre, gir ingen
 Gatekeeper-godkjenning.
+
+NB: Vi hadde tidligere et `Installer.command` i DMG-en som skulle
+fjerne quarantine automatisk. På macOS Sequoia 26 (2026) blokkerer
+Gatekeeper usignerte shellscripts uten "Åpne likevel"-bypass i
+høyreklikk-menyen, så scriptet gjorde UX-en verre. Fjernet — Privacy &
+Security-detouren er nå dokumentert eksplisitt i DMG-bakgrunnen og på
+nettsiden. Homebrew Cask forblir den anbefalte veien.
 
 ### Release-workflowen
 
@@ -150,17 +157,21 @@ target-en.
 
 ### Homebrew Cask
 
-Cask-fila ligger i et separat repo, `kengu/homebrew-togpuls`, og brukes
-slik:
+Cask-fila ligger i hovedrepoet under `Casks/togpuls.rb`, ikke et eget
+`homebrew-togpuls`-repo. Brew tillater å tappe en hvilken som helst
+git-URL hvis vi gir den eksplisitt, så brukere installerer med:
 
-    brew tap kengu/togpuls
+    brew tap kengu/togpuls https://github.com/kengu/togpuls
     brew install --cask togpuls
+    brew upgrade --cask togpuls
 
-Cask-en peker på DMG-en i siste release. En `postflight`-blokk fjerner
-quarantine fra `Togpuls.app` etter install, så brew-veien gir ingen
-Gatekeeper-dialoger. Når en ny release publiseres må `Casks/togpuls.rb`
-oppdateres med ny `version` og `sha256` — manuelt for nå, kan
-automatiseres med en bump-action senere.
+URL-en trengs kun ved første `tap` — videre `upgrade` finner cask-en
+selv. En `postflight`-blokk fjerner quarantine fra `Togpuls.app` etter
+install, så brew-veien gir ingen Gatekeeper-dialoger.
+
+Når en ny release publiseres må `Casks/togpuls.rb` oppdateres med ny
+`version` og `sha256` — manuelt for nå, kan automatiseres senere via en
+GitHub Action som leser release-asseten og committer en bump.
 
 ### Versjon
 
@@ -176,6 +187,7 @@ egen versjon senere, kan den ha sin egen fil og tag-prefiks (f.eks.
 ### Direktelink-fallback
 
 For brukere som henter DMG-en fra GitHub uten Homebrew: dra app-en til
-Applications, dobbeltklikk `Installer.command` i DMG-vinduet. Den
-manuelle nødløsningen er `xattr -dr com.apple.quarantine
-/Applications/Togpuls.app` etterfulgt av å åpne app-en.
+Applications, og gå deretter til Systeminnstillinger → Personvern og
+sikkerhet → «Åpne likevel» første gang. Stegene er beskrevet på
+`togpuls.kengu.no/install` med en CTA-knapp i hero-banneret på
+dashbordet, så brukerne ledes dit før de starter installasjonen.

@@ -13,7 +13,6 @@ MACOS_TAG := macos-v$(MACOS_VERSION)
 MACOS_APP := macos/dist/Togpuls.app
 MACOS_DMG := macos/dist/Togpuls-$(MACOS_VERSION).dmg
 DMG_BACKGROUND := macos/installer/dmg-background.png
-INSTALLER_CMD := macos/installer/Installer.command
 
 .DEFAULT_GOAL := help
 .PHONY: help configure serve cli clean macos-run macos-app macos-sign macos-dmg macos-release macos-clean
@@ -70,21 +69,19 @@ $(DMG_BACKGROUND): macos/installer/render_dmg_background.py $(MACOS_VENV)/.insta
 	@$(MACOS_VENV)/bin/pip install --quiet Pillow
 	@$(MACOS_VENV)/bin/python macos/installer/render_dmg_background.py "$@"
 
-macos-dmg: macos-sign $(DMG_BACKGROUND)  ## Bygg signert DMG med Installer.command
+macos-dmg: macos-sign $(DMG_BACKGROUND)  ## Bygg signert DMG (drag-to-Applications)
 	@command -v create-dmg >/dev/null || { \
 	    echo "Trenger create-dmg (brew install create-dmg)."; \
 	    exit 1; }
-	@chmod +x "$(INSTALLER_CMD)"
 	@rm -f "$(MACOS_DMG)"
 	create-dmg \
 	    --volname "Togpuls $(MACOS_VERSION)" \
 	    --background "$(DMG_BACKGROUND)" \
 	    --window-pos 200 120 \
-	    --window-size 600 400 \
+	    --window-size 640 460 \
 	    --icon-size 96 \
-	    --icon "Togpuls.app" 150 180 \
-	    --app-drop-link 450 180 \
-	    --add-file "Installer.command" "$(INSTALLER_CMD)" 300 320 \
+	    --icon "Togpuls.app" 190 195 \
+	    --app-drop-link 450 195 \
 	    --hide-extension "Togpuls.app" \
 	    --no-internet-enable \
 	    "$(MACOS_DMG)" \

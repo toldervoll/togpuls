@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="no">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title data-i18n="install_title">Installer Togpuls på Mac</title>
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f4f1" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0d1f" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;800&family=JetBrains+Mono:wght@400;500&display=swap" />
+    <script>
+      try {
+        const t = localStorage.getItem("togpuls-theme");
+        if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+        const l = localStorage.getItem("togpuls-lang");
+        if (l === "no" || l === "en") {
+          document.documentElement.setAttribute("lang", l);
+        } else {
+          const n = (navigator.language || "").toLowerCase();
+          const isNb = n.startsWith("nb") || n.startsWith("nn") || n.startsWith("no");
+          document.documentElement.setAttribute("lang", isNb ? "no" : "en");
+        }
+      } catch (e) {}
+    </script>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+
+    <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+      <symbol id="brand-signal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="2" width="12" height="13" rx="2"/>
+        <circle cx="12" cy="8" r="2.5" fill="currentColor" stroke="none"/>
+        <line x1="12" y1="15" x2="12" y2="20"/>
+        <line x1="9" y1="20" x2="15" y2="20"/>
+      </symbol>
+      <symbol id="arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="5" y1="12" x2="19" y2="12"/>
+        <polyline points="13 6 19 12 13 18"/>
+      </symbol>
+      <symbol id="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <circle cx="12" cy="12" r="5"/>
+        <line x1="12" y1="1" x2="12" y2="3"/>
+        <line x1="12" y1="21" x2="12" y2="23"/>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+        <line x1="1" y1="12" x2="3" y2="12"/>
+        <line x1="21" y1="12" x2="23" y2="12"/>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </symbol>
+      <symbol id="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </symbol>
+      <symbol id="globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="2" y1="12" x2="22" y2="12"/>
+        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+      </symbol>
+      <symbol id="download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </symbol>
+      <symbol id="copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+      </symbol>
+      <symbol id="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"/>
+      </symbol>
+    </svg>
+
+    <main class="about">
+      <header class="about-hdr">
+        <a class="wordmark" href="/">
+          <svg class="icon brand-icon"><use href="#brand-signal"/></svg>
+          <span class="brand-name">togpuls</span>
+        </a>
+        <div class="about-controls">
+          <button id="lang-toggle" class="lang-toggle" type="button"
+                  data-i18n-attr="aria-label:lang_toggle,title:lang_toggle"
+                  aria-label="Switch to English" title="Switch to English">
+            <svg class="icon" aria-hidden="true"><use href="#globe"/></svg>
+            <span id="lang-toggle-label" data-i18n="lang_toggle_label">EN</span>
+          </button>
+          <button id="theme-toggle" class="theme-toggle icon-btn" type="button"
+                  data-i18n-attr="aria-label:theme_toggle,title:theme_toggle"
+                  aria-label="Bytt tema" title="Bytt tema">
+            <span id="theme-toggle-icon" aria-hidden="true">
+              <svg class="icon icon-moon"><use href="#moon"/></svg>
+              <svg class="icon icon-sun"><use href="#sun"/></svg>
+            </span>
+          </button>
+        </div>
+      </header>
+
+      <article class="about-card install-card">
+        <h1 data-i18n="install_h1">Installer Togpuls på Mac</h1>
+        <p class="about-lead" data-i18n="install_lead">Togpuls finnes som en liten menylinje-app for macOS som viser neste avgang og avvik rett øverst på skjermen. Anbefalt installasjon er via Homebrew — den eneste veien som er friksjonsfri på macOS 15 (Sequoia) og nyere.</p>
+
+        <section class="install-sec">
+          <h2 data-i18n="install_brew_h">Anbefalt: Med Homebrew</h2>
+          <p class="muted small">
+            <span data-i18n="install_brew_need">Krever Homebrew. Har du det ikke? Installer fra </span><a href="https://brew.sh" target="_blank" rel="noopener">brew.sh</a><span data-i18n="install_brew_need_end"> først.</span>
+          </p>
+          <p data-i18n="install_brew_b">Tre kommandoer i Terminal. Homebrew håndterer signering-omgåelse og oppdateringer for deg — kjør de to første for å installere, og den siste senere for å oppdatere.</p>
+
+          <div class="install-cmd">
+            <pre><code>brew tap kengu/togpuls https://github.com/kengu/togpuls</code></pre>
+            <button class="install-cmd-copy" type="button"
+                    data-i18n-attr="aria-label:install_copy,title:install_copy"
+                    aria-label="Kopier kommando" title="Kopier kommando">
+              <svg class="icon icon-copy" aria-hidden="true"><use href="#copy"/></svg>
+              <svg class="icon icon-check" aria-hidden="true"><use href="#check"/></svg>
+            </button>
+          </div>
+          <div class="install-cmd">
+            <pre><code>brew install --cask togpuls</code></pre>
+            <button class="install-cmd-copy" type="button"
+                    data-i18n-attr="aria-label:install_copy,title:install_copy"
+                    aria-label="Kopier kommando" title="Kopier kommando">
+              <svg class="icon icon-copy" aria-hidden="true"><use href="#copy"/></svg>
+              <svg class="icon icon-check" aria-hidden="true"><use href="#check"/></svg>
+            </button>
+          </div>
+          <div class="install-cmd">
+            <pre><code>brew upgrade --cask togpuls</code></pre>
+            <button class="install-cmd-copy" type="button"
+                    data-i18n-attr="aria-label:install_copy,title:install_copy"
+                    aria-label="Kopier kommando" title="Kopier kommando">
+              <svg class="icon icon-copy" aria-hidden="true"><use href="#copy"/></svg>
+              <svg class="icon icon-check" aria-hidden="true"><use href="#check"/></svg>
+            </button>
+          </div>
+        </section>
+
+        <section class="install-sec">
+          <h2 data-i18n="install_dmg_h">Alternativ: Last ned DMG</h2>
+          <p data-i18n="install_dmg_b">Hvis du ikke har Homebrew, kan du laste ned DMG-en og installere manuelt. Da må du gjennom et ekstra steg i Systeminnstillinger fordi appen ikke er notarisert hos Apple.</p>
+
+          <a id="install-dmg-cta" class="install-cta" href="/download/macos">
+            <svg class="icon" aria-hidden="true"><use href="#download"/></svg>
+            <span data-i18n="install_dmg_cta">Last ned for Mac</span>
+            <span id="install-dmg-version" class="install-cta-version"></span>
+          </a>
+
+          <ol class="install-steps">
+            <li>
+              <strong data-i18n="install_step1_h">Åpne DMG-en og dra Togpuls til Applications.</strong>
+            </li>
+            <li>
+              <strong data-i18n="install_step2_h">Prøv å åpne Togpuls fra Programmer.</strong>
+              <p data-i18n="install_step2_b">Du får en dialog som sier "Apple kunne ikke fastslå om Togpuls er fri for skadevare". Klikk <em>Ferdig</em>.</p>
+            </li>
+            <li>
+              <strong data-i18n="install_step3_h">Gå til Systeminnstillinger → Personvern og sikkerhet.</strong>
+              <p data-i18n="install_step3_b">Bla ned til seksjonen "Sikkerhet". Der står det "Togpuls ble blokkert" med en knapp "Åpne likevel". Klikk den, bekreft med passord eller Touch ID.</p>
+            </li>
+            <li>
+              <strong data-i18n="install_step4_h">Togpuls starter — ikonet dukker opp i menylinjen.</strong>
+              <p data-i18n="install_step4_b">Dette ekstra steget gjøres kun første gang. Heretter starter appen normalt.</p>
+            </li>
+          </ol>
+        </section>
+
+        <section class="install-sec">
+          <h2 data-i18n="install_why_h">Hvorfor det ekstra steget?</h2>
+          <p data-i18n="install_why_b">Apple krever at apper notariseres (sendes til Apple for skanning) for å starte uten advarsler. Notarisering forutsetter et Apple Developer Program-medlemskap, som koster ~$99/år. Togpuls er et privat sideprosjekt uten kommersielt grunnlag for den kostnaden. Apper du installerer via Homebrew slipper unna fordi Homebrew fjerner Apples "quarantine"-flagg automatisk under installasjonen — derfor er det den anbefalte veien.</p>
+        </section>
+      </article>
+
+      <footer class="ftr muted small">
+        <p><span data-i18n="about_footer_pre">Data: </span><a href="https://developer.entur.org/pages-journeyplanner-journeyplanner" target="_blank" rel="noopener" data-i18n="about_footer_source">Entur Journey Planner v3</a></p>
+        <nav class="ftr-links" aria-label="togpuls">
+          <a class="about-back" href="/">
+            <svg class="icon" aria-hidden="true"><use href="#arrow-right"/></svg>
+            <span data-i18n="about_back">Tilbake til dashbordet</span>
+          </a>
+          <span class="dot" aria-hidden="true">·</span>
+          <a href="/about" data-i18n="footer_about">Om</a>
+          <span class="dot" aria-hidden="true">·</span>
+          <a href="https://github.com/kengu/togpuls" target="_blank" rel="noopener" data-i18n="footer_github">GitHub</a>
+        </nav>
+      </footer>
+    </main>
+
+    <script src="/static/i18n.js" defer></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const setTitle = () => { document.title = t("install_title"); };
+        setTitle();
+        document.addEventListener("i18n:change", setTitle);
+
+        const themeBtn = document.getElementById("theme-toggle");
+        if (themeBtn) {
+          themeBtn.addEventListener("click", () => {
+            const root = document.documentElement;
+            const dark = root.getAttribute("data-theme") === "dark"
+              || (!root.getAttribute("data-theme")
+                  && window.matchMedia("(prefers-color-scheme: dark)").matches);
+            const next = dark ? "light" : "dark";
+            root.setAttribute("data-theme", next);
+            try { localStorage.setItem("togpuls-theme", next); } catch (e) {}
+          });
+        }
+
+        const langBtn = document.getElementById("lang-toggle");
+        if (langBtn) {
+          langBtn.addEventListener("click", () => {
+            setLang(currentLang() === "no" ? "en" : "no");
+          });
+        }
+
+        // Hent versjon for nedlastingsknappen.
+        fetch("/api/v1/download/macos")
+          .then((r) => (r.ok ? r.json() : null))
+          .then((info) => {
+            if (!info || !info.version) return;
+            const v = document.getElementById("install-dmg-version");
+            if (v) v.textContent = " · v" + info.version;
+          })
+          .catch(() => {});
+
+        // Kopier-til-utklippstavle på brew-kommandoblokkene.
+        document.querySelectorAll(".install-cmd-copy").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const wrap = btn.closest(".install-cmd");
+            const code = wrap && wrap.querySelector("code");
+            if (!code || !navigator.clipboard) return;
+            try {
+              await navigator.clipboard.writeText(code.textContent.trim());
+              btn.classList.add("copied");
+              setTimeout(() => btn.classList.remove("copied"), 1500);
+            } catch (e) {}
+          });
+        });
+      });
+    </script>
+  </body>
+</html>
