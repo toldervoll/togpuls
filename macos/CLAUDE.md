@@ -58,12 +58,16 @@ ferske MenuItem-er hver gang (en NSMenuItem kan bare ligge i én meny):
 - Statusmenyen (NSStatusItem): statuslinjer øverst + handlingene under.
 - Dock-menyen: `build_dock_menu()`.
 - Hoved-menylinja (`setMainMenu_` i `_configure_app_menu()`, fylt av
-  `_populate_app_menu(status_lines)` hver refresh) har to oppføringer:
+  `_populate_app_menu(status_lines)` hver refresh) har tre oppføringer:
   1. «Togpuls» (CFBundleName): kun handlinger + «Avslutt Togpuls».
   2. En status-meny der tittelen er status-ikon + tekst (`self.title`) og
      nedtrekket er statuslinjene — duplikat av NSStatusItem-menyen, men uten
      handlinger. Gjør avgangsinfoen tilgjengelig i menylinja når status-ikonet
      er skjult bak notchen.
+  3. «Hjelp» med statisk innhold (settes opp én gang i `_configure_app_menu`,
+     ikke i refresh-løkka): «Togpuls vises ikke i menylinjen…» (modal med
+     Systeminnstillinger → Menylinje-tipset + reserveveiene), og
+     «Installasjonsguide…» som åpner `/install` i nettleseren.
   NSStatusItem-menyen beholder statuslinjer + handlinger som før.
 
 `_status_menuitems(status_lines)` er felles bygger for statuslinjene

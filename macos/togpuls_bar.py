@@ -213,13 +213,44 @@ class TogpulsBar(rumps.App):
         try:
             rumps.alert(
                 title="Togpuls",
-                message=("Menylinja er trolig full, så ikonet vises ikke. Du når "
-                         "Togpuls via status-menyen i menylinja, Dock-ikonet "
-                         "eller hurtigtasten ⌃⌥⌘T."),
+                message=(
+                    "Menylinja er trolig full, så ikonet vises ikke. Du når "
+                    "Togpuls via status-menyen i menylinja, Dock-ikonet "
+                    "eller hurtigtasten ⌃⌥⌘T.\n\n"
+                    "Du kan også sjekke at Togpuls er aktivert i "
+                    "Systeminnstillinger → Menylinje → «Tillat i menylinjen»."
+                ),
                 ok="OK",
             )
         except Exception:
             pass
+
+    def _show_menu_bar_help(self, _):
+        """Hjelp-modal: hvorfor Togpuls ikke vises i menylinjen og hvordan
+        man når app-en likevel. Kalles fra Hjelp-menyen i menylinja."""
+        try:
+            rumps.alert(
+                title="Togpuls i menylinjen",
+                message=(
+                    "Hvis Togpuls ikke vises i menylinjen, sjekk dette:\n\n"
+                    "1. Systeminnstillinger → Menylinje → «Tillat i menylinjen» — "
+                    "Togpuls skal være på i lista der.\n\n"
+                    "2. Menylinja kan være full (notch tar plass på MacBook). "
+                    "Du når Togpuls likevel via:\n"
+                    "   • Dock-ikonet\n"
+                    "   • Hurtigtasten ⌃⌥⌘T\n"
+                    "   • App-menyen øverst når Togpuls er aktiv\n\n"
+                    "Togpuls har også sin egen av/på-bryter «Vis i statusmenyen» "
+                    "i alle menyene."
+                ),
+                ok="OK",
+            )
+        except Exception:
+            pass
+
+    def _open_install_guide(self, _):
+        """Åpne installasjonsveiledningen på nettsiden."""
+        webbrowser.open(f"{BASE_URL}/install")
 
     def open_window(self, _=None):
         """Åpne (eller hent fram) et vindu med dashbordet i en innebygd
@@ -385,11 +416,14 @@ class TogpulsBar(rumps.App):
         return menu
 
     def _configure_app_menu(self):
-        """Opprett hoved-menylinja én gang. To oppføringer:
+        """Opprett hoved-menylinja én gang. Tre oppføringer:
         1) app-menyen «Togpuls» (CFBundleName) — handlinger.
         2) en status-meny der tittelen er status-ikon + tekst og nedtrekket er
            statuslinjene (duplikat av NSStatusItem, uten handlinger).
-        Innholdet fylles inn av _populate_app_menu hver refresh."""
+        3) Hjelp-menyen — statisk lenke til guide og hjelp for menylinje-
+           synlighet. Plassert ytterst til høyre etter Mac-konvensjon.
+        Innholdet i (1) og (2) fylles inn av _populate_app_menu hver refresh.
+        Hjelp-menyen er statisk og settes opp her."""
         if getattr(self, "_app_menu", None) is not None:
             return
         if getattr(self, "_nsapp", None) is None:
@@ -406,6 +440,26 @@ class TogpulsBar(rumps.App):
         main.addItem_(status_item)
         status_menu = NSMenu.alloc().init()
         main.setSubmenu_forItem_(status_menu, status_item)
+
+        # Hjelp-meny — statisk innhold, ferske rumps-MenuItem-er bare her.
+        help_item = NSMenuItem.alloc().init()
+        help_item.setTitle_("Hjelp")
+        main.addItem_(help_item)
+        help_menu = NSMenu.alloc().init()
+        help_menu.setTitle_("Hjelp")
+        main.setSubmenu_forItem_(help_menu, help_item)
+        self._help_items = [
+            rumps.MenuItem(
+                "Togpuls vises ikke i menylinjen…",
+                callback=self._show_menu_bar_help,
+            ),
+            rumps.MenuItem(
+                "Installasjonsguide…",
+                callback=self._open_install_guide,
+            ),
+        ]
+        for mi in self._help_items:
+            help_menu.addItem_(mi._menuitem)
 
         NSApplication.sharedApplication().setMainMenu_(main)
         self._app_menu = app_menu
