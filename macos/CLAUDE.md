@@ -134,11 +134,19 @@ Gatekeeper-godkjenning.
 
 ### Release-workflowen
 
-`.github/workflows/release.yml` kjører på tag-push (`v*`) eller manuelt.
-Den skriver tag-versjonen til `VERSION`, kjører `make macos-dmg` på en
-`macos-14`-runner, regner ut SHA256 og oppretter en GitHub Release med
-DMG-en som asset. Releasen sin beskrivelse inneholder installasjons-
-stegene og SHA256-en — sistnevnte brukes til å oppdatere Cask-en.
+`.github/workflows/release.yml` kjører på tag-push (`macos-v*`) eller
+manuelt. Den skriver tag-versjonen til `macos/VERSION`, kjører `make
+macos-dmg` på en `macos-14`-runner, regner ut SHA256 og oppretter en
+GitHub Release med DMG-en som asset. Releasen sin beskrivelse
+inneholder installasjons-stegene og SHA256-en — sistnevnte brukes til å
+oppdatere Cask-en.
+
+Selve tagginga gjøres med `make macos-release`, som verifiserer at
+arbeidsmappen er ren, at vi står på `main` synkronisert med `origin`,
+og at `macos-v$(MACOS_VERSION)`-taggen ikke finnes fra før. Da slipper
+vi å pushe tag-er manuelt fra feil branch eller med ucommittede
+endringer. Bump-en av `macos/VERSION` gjøres manuelt før kjøring av
+target-en.
 
 ### Homebrew Cask
 
@@ -156,10 +164,14 @@ automatiseres med en bump-action senere.
 
 ### Versjon
 
-Én kilde: `VERSION` i repo-rot. Leses av `macos/setup.py`
-(`CFBundleVersion` / `CFBundleShortVersionString`) og av Makefile
-(`MACOS_DMG`-navnet). Release-workflowen overskriver fila med tag-
-versjonen før bygg, så lokale bygg og CI-bygg er aldri uenige.
+Én kilde: `macos/VERSION`. Leses av `macos/setup.py` (`CFBundleVersion`
+/ `CFBundleShortVersionString`) og av Makefile (`MACOS_DMG`-navnet og
+`MACOS_TAG`-en). Release-workflowen overskriver fila med tag-versjonen
+før bygg, så lokale bygg og CI-bygg er aldri uenige. Fila ligger under
+`macos/` fordi det per nå kun er macOS-leveransen som er versjonert —
+web-siden ruller bare på main. Hvis en annen leveransekanal også får
+egen versjon senere, kan den ha sin egen fil og tag-prefiks (f.eks.
+`web/VERSION` og `web-v*`).
 
 ### Direktelink-fallback
 

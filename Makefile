@@ -1,21 +1,22 @@
 PY := venv/bin/python
 PIP := venv/bin/pip
 
-# Felles versjon for setup.py, Makefile, DMG-navn og release-workflow.
-VERSION := $(shell cat VERSION)
-
 # macOS menylinje-app bygges med py2app, som trenger et framework-Python
 # (Homebrew/python.org). Xcode/CommandLineTools sin python3 kan ikke signere
 # bunten, så denne appen får sin egen venv adskilt fra hovedvenv-en.
 MACOS_PY ?= python3.12
 MACOS_VENV := macos/.venv
+# Versjon for setup.py, DMG-navn og release-tag. Scoped til macOS-leveransen
+# fordi web-siden enn så lenge bare ruller på main uten egen versjonering.
+MACOS_VERSION := $(shell cat macos/VERSION)
+MACOS_TAG := macos-v$(MACOS_VERSION)
 MACOS_APP := macos/dist/Togpuls.app
-MACOS_DMG := macos/dist/Togpuls-$(VERSION).dmg
+MACOS_DMG := macos/dist/Togpuls-$(MACOS_VERSION).dmg
 DMG_BACKGROUND := macos/installer/dmg-background.png
 INSTALLER_CMD := macos/installer/Installer.command
 
 .DEFAULT_GOAL := help
-.PHONY: help configure serve cli clean macos-run macos-app macos-sign macos-dmg macos-clean
+.PHONY: help configure serve cli clean macos-run macos-app macos-sign macos-dmg macos-release macos-clean
 
 help:                ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -76,7 +77,7 @@ macos-dmg: macos-sign $(DMG_BACKGROUND)  ## Bygg signert DMG med Installer.comma
 	@chmod +x "$(INSTALLER_CMD)"
 	@rm -f "$(MACOS_DMG)"
 	create-dmg \
-	    --volname "Togpuls $(VERSION)" \
+	    --volname "Togpuls $(MACOS_VERSION)" \
 	    --background "$(DMG_BACKGROUND)" \
 	    --window-pos 200 120 \
 	    --window-size 600 400 \
@@ -90,6 +91,22 @@ macos-dmg: macos-sign $(DMG_BACKGROUND)  ## Bygg signert DMG med Installer.comma
 	    "$(MACOS_APP)"
 	@echo "→ $(MACOS_DMG)"
 	@shasum -a 256 "$(MACOS_DMG)"
+
+macos-release:       ## Tag macos-v$(MACOS_VERSION) og push for å trigge release-workflow
+	@test -z "$$(git status --porcelain)" || { \
+	    echo "Working tree er ikke ren. Commit eller stash først."; exit 1; }
+	@test "$$(git rev-parse --abbrev-ref HEAD)" = "main" || { \
+	    echo "Taggar bare fra main (du står på $$(git rev-parse --abbrev-ref HEAD))."; \
+	    exit 1; }
+	@git fetch --quiet origin main
+	@test "$$(git rev-parse HEAD)" = "$$(git rev-parse origin/main)" || { \
+	    echo "HEAD er ikke i sync med origin/main. Push eller pull først."; exit 1; }
+	@if git rev-parse "$(MACOS_TAG)" >/dev/null 2>&1; then \
+	    echo "Tag $(MACOS_TAG) finnes allerede. Bump macos/VERSION først."; exit 1; fi
+	@echo "Tagger $(MACOS_TAG) …"
+	git tag -a "$(MACOS_TAG)" -m "macOS release $(MACOS_VERSION)"
+	git push origin "$(MACOS_TAG)"
+	@echo "→ $(MACOS_TAG) pushet. Workflow kjører på github.com/kengu/togpuls/actions"
 
 macos-clean:         ## Remove the macOS venv and build artifacts
 	rm -rf $(MACOS_VENV) macos/build macos/dist $(DMG_BACKGROUND)

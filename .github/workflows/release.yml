@@ -1,13 +1,13 @@
-name: release
+name: release-macos
 
 on:
   push:
     tags:
-      - 'v*'
+      - 'macos-v*'
   workflow_dispatch:
     inputs:
       version:
-        description: 'Versjon (uten v-prefiks), f.eks. 0.1.0'
+        description: 'Versjon (uten macos-v-prefiks), f.eks. 0.1.0'
         required: true
 
 permissions:
@@ -25,10 +25,10 @@ jobs:
           if [ -n "${{ inputs.version }}" ]; then
             tag="${{ inputs.version }}"
           else
-            tag="${GITHUB_REF#refs/tags/v}"
+            tag="${GITHUB_REF#refs/tags/macos-v}"
           fi
           echo "version=$tag" >> "$GITHUB_OUTPUT"
-          echo "$tag" > VERSION
+          echo "$tag" > macos/VERSION
           echo "Bygger Togpuls $tag"
 
       - uses: actions/setup-python@v5
@@ -61,7 +61,7 @@ jobs:
           path: ${{ steps.sha.outputs.dmg }}
 
       - name: Opprett GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/macos-v')
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ steps.sha.outputs.dmg }}
