@@ -150,10 +150,17 @@ oppdatere Cask-en.
 
 Selve tagginga gjøres med `make macos-release`, som verifiserer at
 arbeidsmappen er ren, at vi står på `main` synkronisert med `origin`,
-og at `macos-v$(MACOS_VERSION)`-taggen ikke finnes fra før. Da slipper
-vi å pushe tag-er manuelt fra feil branch eller med ucommittede
-endringer. Bump-en av `macos/VERSION` gjøres manuelt før kjøring av
-target-en.
+og at den nye `macos-v…`-taggen ikke finnes fra før. Target-en bumper
+`macos/VERSION` selv (patch som standard), committer bumpen, tagger og
+pusher — én kommando for en hel release.
+
+    make macos-release                      # patch (0.1.1 → 0.1.2)
+    make macos-release BUMP=minor           # minor (0.1.x → 0.2.0)
+    make macos-release BUMP=major           # major (0.x.x → 1.0.0)
+    make macos-release NEW_VERSION=1.0.0    # eksplisitt
+
+Selve logikken ligger i `macos/installer/release.sh` — Makefile-target-en
+er bare en wrapper som forer den med variabler.
 
 ### Homebrew Cask
 

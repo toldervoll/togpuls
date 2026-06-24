@@ -89,21 +89,8 @@ macos-dmg: macos-sign $(DMG_BACKGROUND)  ## Bygg signert DMG (drag-to-Applicatio
 	@echo "→ $(MACOS_DMG)"
 	@shasum -a 256 "$(MACOS_DMG)"
 
-macos-release:       ## Tag macos-v$(MACOS_VERSION) og push for å trigge release-workflow
-	@test -z "$$(git status --porcelain)" || { \
-	    echo "Working tree er ikke ren. Commit eller stash først."; exit 1; }
-	@test "$$(git rev-parse --abbrev-ref HEAD)" = "main" || { \
-	    echo "Taggar bare fra main (du står på $$(git rev-parse --abbrev-ref HEAD))."; \
-	    exit 1; }
-	@git fetch --quiet origin main
-	@test "$$(git rev-parse HEAD)" = "$$(git rev-parse origin/main)" || { \
-	    echo "HEAD er ikke i sync med origin/main. Push eller pull først."; exit 1; }
-	@if git rev-parse "$(MACOS_TAG)" >/dev/null 2>&1; then \
-	    echo "Tag $(MACOS_TAG) finnes allerede. Bump macos/VERSION først."; exit 1; fi
-	@echo "Tagger $(MACOS_TAG) …"
-	git tag -a "$(MACOS_TAG)" -m "macOS release $(MACOS_VERSION)"
-	git push origin "$(MACOS_TAG)"
-	@echo "→ $(MACOS_TAG) pushet. Workflow kjører på github.com/kengu/togpuls/actions"
+macos-release:       ## Bump macos/VERSION (BUMP=patch|minor|major eller NEW_VERSION=x.y.z), tag og push
+	@BUMP="$(BUMP)" NEW_VERSION="$(NEW_VERSION)" bash macos/installer/release.sh
 
 macos-clean:         ## Remove the macOS venv and build artifacts
 	rm -rf $(MACOS_VENV) macos/build macos/dist $(DMG_BACKGROUND)

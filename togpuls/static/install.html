@@ -107,10 +107,19 @@
           <p class="muted small">
             <span data-i18n="install_brew_need">Krever Homebrew. Har du det ikke? Installer fra </span><a href="https://brew.sh" target="_blank" rel="noopener">brew.sh</a><span data-i18n="install_brew_need_end"> først.</span>
           </p>
-          <p data-i18n="install_brew_b">Tre kommandoer i Terminal. Homebrew håndterer signering-omgåelse og oppdateringer for deg — kjør de to første for å installere, og den siste senere for å oppdatere.</p>
+          <p data-i18n="install_brew_b">Fire kommandoer i Terminal. Homebrew håndterer signering-omgåelse og oppdateringer for deg — kjør de tre første for å installere, og den siste senere for å oppdatere.</p>
 
           <div class="install-cmd">
             <pre><code>brew tap kengu/togpuls https://github.com/kengu/togpuls</code></pre>
+            <button class="install-cmd-copy" type="button"
+                    data-i18n-attr="aria-label:install_copy,title:install_copy"
+                    aria-label="Kopier kommando" title="Kopier kommando">
+              <svg class="icon icon-copy" aria-hidden="true"><use href="#copy"/></svg>
+              <svg class="icon icon-check" aria-hidden="true"><use href="#check"/></svg>
+            </button>
+          </div>
+          <div class="install-cmd">
+            <pre><code>brew trust kengu/togpuls</code></pre>
             <button class="install-cmd-copy" type="button"
                     data-i18n-attr="aria-label:install_copy,title:install_copy"
                     aria-label="Kopier kommando" title="Kopier kommando">
@@ -136,6 +145,10 @@
               <svg class="icon icon-check" aria-hidden="true"><use href="#check"/></svg>
             </button>
           </div>
+
+          <p class="muted small" data-i18n="install_brew_trust">
+            Steg 2 lar Homebrew bruke vårt tredjeparts-tap — én gang, gjelder også fremtidige oppdateringer.
+          </p>
         </section>
 
         <section class="install-sec">
