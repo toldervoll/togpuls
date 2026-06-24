@@ -21,6 +21,7 @@ import webbrowser
 from datetime import datetime
 
 import rumps
+from Foundation import NSObject
 
 BASE_URL = os.environ.get("TOGPULS_BASE_URL", "https://togpuls.kengu.no").rstrip("/")
 FROM_PLACE = os.environ.get("TOGPULS_STOP_PLACE", "NSR:StopPlace:337")
@@ -46,6 +47,26 @@ DASHBOARD_DEFAULT_FROM = "NSR:StopPlace:337"  # Oslo S — URL holdes ren her
 ZWS = "​"
 
 
+class _RouteObserver(NSObject):
+    """KVO-observatør på WKWebView.URL. Dashbordet bruker replaceState (fyrer
+    ikke hashchange/popstate), men URL-property-en oppdateres og er
+    KVO-observerbar — så her fanger vi rute-endringer gjort inne i webviewen."""
+
+    def observeValueForKeyPath_ofObject_change_context_(self, keyPath, obj, change, context):
+        app = getattr(rumps.App, "*app_instance", None)
+        if app is None or not getattr(app, "_route_ready", False):
+            return  # ignorer forbigående URL-er under første innlasting
+        url = obj.URL()
+        frag = url.fragment() if url is not None else None
+        app._apply_webview_route(frag)
+
+    def webView_didFinishNavigation_(self, webView, navigation):
+        # Først etter at siden er ferdig lastet stoler vi på URL-endringer.
+        app = getattr(rumps.App, "*app_instance", None)
+        if app is not None:
+            app._route_ready = True
+
+
 class TogpulsBar(rumps.App):
     def __init__(self):
         super().__init__("🚆 …", quit_button=None)
@@ -55,6 +76,13 @@ class TogpulsBar(rumps.App):
         self.to_name = None
         self.stations = self._load_stations()
         self._name_lookup()
+        # Husket valg: skal status-ikonet vises? Standard True.
+        from Foundation import NSUserDefaults
+        d = NSUserDefaults.standardUserDefaults()
+        self._status_visible = (
+            True if d.objectForKey_("ShowStatusItem") is None
+            else bool(d.boolForKey_("ShowStatusItem"))
+        )
         self.timer = rumps.Timer(self.refresh, POLL_SEC)
         self.timer.start()
         self.refresh(None)
@@ -129,6 +157,274 @@ class TogpulsBar(rumps.App):
 
         return cb
 
+    def _configure_status_item(self):
+        """Sett autosaveName og bruk det huskede synlighetsvalget. NSStatusItem
+        finnes først etter at run() har startet, så vi gjør dette lazy."""
+        item = getattr(getattr(self, "_nsapp", None), "nsstatusitem", None)
+        if item is None or getattr(self, "_si_configured", False):
+            return
+        item.setAutosaveName_("TogpulsBar")  # husk plassering mellom omstarter
+        item.setVisible_(self._status_visible)
+        self._si_configured = True
+
+    def _status_item_hidden(self):
+        """Heuristikk for om menylinje-ikonet faktisk ikke vises (macOS har
+        ingen offisiell API for dette). isVisible rapporterer kun intensjon.
+        Vi ser på status-knappens vindu: occlusionState mister Visible-biten,
+        og systemet parkerer skjulte ikoner på x ≤ 0 / utenfor skjerm."""
+        item = getattr(getattr(self, "_nsapp", None), "nsstatusitem", None)
+        if item is None:
+            return False
+        button = item.button()
+        if button is None:
+            return True
+        win = button.window()
+        if win is None or win.screen() is None:
+            return True
+        from AppKit import NSWindowOcclusionStateVisible
+        if not (win.occlusionState() & NSWindowOcclusionStateVisible):
+            return True
+        return win.frame().origin.x <= 0
+
+    def toggle_status_item(self, sender):
+        """Av/på-bryter for menylinje-ikonet. Valget huskes mellom omstarter.
+        Når vi slår PÅ men ikonet likevel ikke dukker opp (full menylinje),
+        sier vi fra via en modal. Å slå AV gir ingen melding — det var et
+        bevisst valg."""
+        self._status_visible = not self._status_visible
+        item = getattr(getattr(self, "_nsapp", None), "nsstatusitem", None)
+        if item is not None:
+            item.setVisible_(self._status_visible)
+        from Foundation import NSUserDefaults
+        NSUserDefaults.standardUserDefaults().setBool_forKey_(
+            self._status_visible, "ShowStatusItem"
+        )
+        sender.state = 1 if self._status_visible else 0
+        if self._status_visible:
+            # Sjekk etter at layouten har satt seg; varsle BARE hvis fortsatt
+            # skjult (ingen melding når det faktisk dukker opp).
+            self._recheck_timer = rumps.Timer(self._toggle_on_modal_once, 1)
+            self._recheck_timer.start()
+
+    def _toggle_on_modal_once(self, timer):
+        timer.stop()
+        if not self._status_item_hidden():
+            return  # ikonet dukket opp — ingen melding nødvendig
+        try:
+            rumps.alert(
+                title="Togpuls",
+                message=("Menylinja er trolig full, så ikonet vises ikke. Du når "
+                         "Togpuls via status-menyen i menylinja, Dock-ikonet "
+                         "eller hurtigtasten ⌃⌥⌘T."),
+                ok="OK",
+            )
+        except Exception:
+            pass
+
+    def open_window(self, _=None):
+        """Åpne (eller hent fram) et vindu med dashbordet i en innebygd
+        WKWebView. Uavhengig av menylinja — fungerer alltid."""
+        from AppKit import (
+            NSWindow, NSWindowStyleMaskTitled, NSWindowStyleMaskClosable,
+            NSWindowStyleMaskResizable, NSWindowStyleMaskMiniaturizable,
+            NSBackingStoreBuffered, NSApplication,
+        )
+        from Foundation import NSURL, NSURLRequest
+        from WebKit import WKWebView, WKWebViewConfiguration
+
+        nsapp = NSApplication.sharedApplication()
+        if getattr(self, "_window", None) is not None:
+            self._window.makeKeyAndOrderFront_(None)
+            nsapp.activateIgnoringOtherApps_(True)
+            return
+
+        rect = ((0.0, 0.0), (480.0, 760.0))
+        style = (
+            NSWindowStyleMaskTitled | NSWindowStyleMaskClosable
+            | NSWindowStyleMaskResizable | NSWindowStyleMaskMiniaturizable
+        )
+        win = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
+            rect, style, NSBackingStoreBuffered, False
+        )
+        win.setTitle_("Togpuls")
+        win.setReleasedWhenClosed_(False)  # gjenbruk vinduet ved ny åpning
+        win.center()
+
+        web = WKWebView.alloc().initWithFrame_configuration_(
+            rect, WKWebViewConfiguration.alloc().init()
+        )
+        web.setAutoresizingMask_(2 | 16)  # bredde + høyde følger vinduet
+        win.setContentView_(web)
+        # Observer URL-endringer i webviewen (Fra/Til endret inne i dashbordet).
+        self._route_ready = False
+        self._route_observer = _RouteObserver.alloc().init()
+        web.setNavigationDelegate_(self._route_observer)
+        web.addObserver_forKeyPath_options_context_(
+            self._route_observer, "URL", 0, None
+        )
+        web.loadRequest_(
+            NSURLRequest.requestWithURL_(NSURL.URLWithString_(self._dashboard_url()))
+        )
+
+        win.makeKeyAndOrderFront_(None)
+        nsapp.activateIgnoringOtherApps_(True)
+        self._window = win
+        self._webview = web
+        self._synced_hash = self._route_hash()  # lastet allerede med riktig rute
+
+    def _sync_webview(self):
+        """Speil gjeldende Fra/Til til den åpne webviewen ved å sette
+        location.hash. Dashbordets hashchange-lytter re-applikerer ruten uten
+        full reload. No-op hvis ruten er uendret eller vinduet aldri er åpnet."""
+        web = getattr(self, "_webview", None)
+        if web is None:
+            return
+        h = self._route_hash()
+        if h == getattr(self, "_synced_hash", None):
+            return
+        web.evaluateJavaScript_completionHandler_(
+            f"window.location.hash = {json.dumps(h)};", None
+        )
+        self._synced_hash = h
+
+    def _route_from_hash(self, frag):
+        """Motsatt av _route_hash: gjør et URL-fragment om til (from_id, to_id)
+        med fulle NSR-id-er. Tomt fragment = Oslo S, alle avganger."""
+        def full(n):
+            n = (n or "").strip()
+            if not n:
+                return None
+            return n if n.startswith(STOP_PLACE_PREFIX) else STOP_PLACE_PREFIX + n
+
+        frag = (frag or "").strip()
+        if not frag:
+            return DASHBOARD_DEFAULT_FROM, None
+        parts = frag.split("-")
+        frm = full(parts[0]) or DASHBOARD_DEFAULT_FROM
+        to = full(parts[1]) if len(parts) > 1 else None
+        return frm, to
+
+    def _apply_webview_route(self, frag):
+        """Speil en rute valgt inne i webviewen tilbake til menyene og API-et.
+        No-op hvis ruten er uendret — bryter ellers ekko-loopen mot
+        _sync_webview."""
+        frm, to = self._route_from_hash(frag)
+        if frm == self.from_id and to == self.to_id:
+            return
+        self.from_id, self.to_id = frm, to
+        by_id = {s.get("id"): s.get("name") for s in self.stations}
+        self.from_name = by_id.get(frm, frm)
+        self.to_name = by_id.get(to, to) if to else None
+        self._synced_hash = self._route_hash()  # vi er alt i synk; ikke ekko
+        self.refresh(None)
+
+    def popup_menu_centered(self, _=None):
+        """Vis statusmenyen sentrert på skjermen, uavhengig av om menylinje-
+        ikonet er synlig. Brukes av den globale hurtigtasten."""
+        from AppKit import NSScreen
+        nsmenu = getattr(self.menu, "_menu", None)
+        if nsmenu is None:
+            return
+        loc = (0.0, 0.0)
+        screen = NSScreen.mainScreen()
+        if screen is not None:
+            f = screen.frame()
+            sz = nsmenu.size()  # menyens dimensjoner, for å sentrere den
+            cx = f.origin.x + f.size.width / 2.0
+            cy = f.origin.y + f.size.height / 2.0
+            # Lokasjonen er menyens øvre venstre hjørne (skjermkoordinater,
+            # origo nederst), så menyen faller nedover fra punktet.
+            loc = (cx - sz.width / 2.0, cy + sz.height / 2.0)
+        nsmenu.popUpMenuPositioningItem_atLocation_inView_(None, loc, None)
+
+    def _action_menuitems(self):
+        """Felles handlingsvalg, gjenbrukt i statusmenyen, Dock-menyen og
+        app-menyen. Lager ferske MenuItem-er hver gang — en NSMenuItem kan
+        bare ligge i én meny om gangen."""
+        vis = rumps.MenuItem("Vis i statusmenyen", callback=self.toggle_status_item)
+        vis.state = 1 if getattr(self, "_status_visible", True) else 0
+        return [
+            rumps.MenuItem("Åpne i vindu", callback=self.open_window),
+            rumps.MenuItem("Åpne på nett", callback=self.open_dashboard),
+            rumps.MenuItem("Oppdater nå", callback=self.refresh_now),
+            self._from_submenu(),
+            self._to_submenu(),
+            vis,
+        ]
+
+    def refresh_now(self, _=None):
+        """Manuell oppdatering: hent menydata på nytt og relast dashbordet i
+        webviewen (om det er åpent). 30-sekunders-timeren reloader ikke
+        webviewen — dashbordet poller selv."""
+        self.refresh(None)
+        web = getattr(self, "_webview", None)
+        if web is not None:
+            web.reload()
+
+    def build_dock_menu(self):
+        """Bygg en fersk NSMenu for Dock-ikonet. macOS legger selv til
+        standardvalg (Vis, Avslutt) under disse."""
+        from AppKit import NSMenu
+        menu = NSMenu.alloc().init()
+        self._dock_items = self._action_menuitems()  # hold ref mot GC
+        for mi in self._dock_items:
+            menu.addItem_(mi._menuitem)
+        return menu
+
+    def _configure_app_menu(self):
+        """Opprett hoved-menylinja én gang. To oppføringer:
+        1) app-menyen «Togpuls» (CFBundleName) — handlinger.
+        2) en status-meny der tittelen er status-ikon + tekst og nedtrekket er
+           statuslinjene (duplikat av NSStatusItem, uten handlinger).
+        Innholdet fylles inn av _populate_app_menu hver refresh."""
+        if getattr(self, "_app_menu", None) is not None:
+            return
+        if getattr(self, "_nsapp", None) is None:
+            return  # NSApplication er ikke klar før run() har startet
+        from AppKit import NSApplication, NSMenu, NSMenuItem
+        main = NSMenu.alloc().init()
+
+        app_item = NSMenuItem.alloc().init()
+        main.addItem_(app_item)
+        app_menu = NSMenu.alloc().init()
+        main.setSubmenu_forItem_(app_menu, app_item)
+
+        status_item = NSMenuItem.alloc().init()
+        main.addItem_(status_item)
+        status_menu = NSMenu.alloc().init()
+        main.setSubmenu_forItem_(status_menu, status_item)
+
+        NSApplication.sharedApplication().setMainMenu_(main)
+        self._app_menu = app_menu
+        self._app_status_menuitem = status_item
+        self._app_status_menu = status_menu
+
+    def _populate_app_menu(self, status_lines):
+        if getattr(self, "_app_menu", None) is None:
+            return
+        from AppKit import NSMenuItem
+
+        # 1) «Togpuls»-menyen: kun handlinger + Avslutt.
+        menu = self._app_menu
+        menu.removeAllItems()
+        self._app_items = self._action_menuitems()  # hold ref mot GC
+        for mi in self._app_items:
+            menu.addItem_(mi._menuitem)
+        menu.addItem_(NSMenuItem.separatorItem())
+        quit_item = rumps.MenuItem("Avslutt Togpuls", callback=rumps.quit_application)
+        menu.addItem_(quit_item._menuitem)
+        self._app_items.append(quit_item)
+
+        # 2) Status-menyen: tittel = status-tekst, innhold = statuslinjene.
+        self._app_status_menuitem.setTitle_(self.title or "Togpuls")
+        smenu = self._app_status_menu
+        smenu.removeAllItems()
+        self._app_status_items = self._status_menuitems(status_lines)
+        for mi in self._app_status_items:
+            smenu.addItem_(mi._menuitem)
+        # Vis statuslinjene i full farge (ikke dempet pga. manglende action).
+        smenu.setAutoenablesItems_(False)
+
     def swap_direction(self, _):
         """Bytt fra- og til-stasjon, som swap-pilen i dashbordet."""
         if not self.to_id:
@@ -140,21 +436,29 @@ class TogpulsBar(rumps.App):
     def open_dashboard(self, _):
         webbrowser.open(self._dashboard_url())
 
-    def _dashboard_url(self):
-        """Speil valgt stasjonspar i URL-hash, likt syncUrl() i app.js."""
+    def _route_hash(self):
+        """Fragmentet (uten #) som speiler valgt rute, likt syncUrl() i app.js.
+        Tom streng = Oslo S uten retning (alle avganger)."""
         def short(sid):
             return sid[len(STOP_PLACE_PREFIX):] if sid and sid.startswith(
                 STOP_PLACE_PREFIX) else sid
 
         if self.to_id:
-            return f"{BASE_URL}/#{short(self.from_id)}-{short(self.to_id)}"
+            return f"{short(self.from_id)}-{short(self.to_id)}"
         if self.from_id and self.from_id != DASHBOARD_DEFAULT_FROM:
-            return f"{BASE_URL}/#{short(self.from_id)}"
-        return BASE_URL
+            return f"{short(self.from_id)}"
+        return ""
+
+    def _dashboard_url(self):
+        """Speil valgt stasjonspar i URL-hash, likt syncUrl() i app.js."""
+        h = self._route_hash()
+        return f"{BASE_URL}/#{h}" if h else BASE_URL
 
     # ---- datahenting + rendering --------------------------------------
 
     def refresh(self, _):
+        self._configure_status_item()
+        self._configure_app_menu()
         frm = urllib.parse.quote(self.from_id)
         if self.to_id:
             path = f"/api/v1/analysis/{frm}/to/{urllib.parse.quote(self.to_id)}"
@@ -164,7 +468,8 @@ class TogpulsBar(rumps.App):
             data = self._get(path, params={"horizon_min": HORIZON_MIN})
             status_lines = self._status_lines(data)
         except Exception as exc:
-            self.title = "🚆 –"
+            self.title = "🚆"
+            self._headline = "🚆 Kunne ikke nå Togpuls"
             status_lines = [
                 "Kunne ikke nå Togpuls",
                 str(exc)[:60],
@@ -172,21 +477,29 @@ class TogpulsBar(rumps.App):
                 f"Prøvde {datetime.now():%H:%M:%S}",
             ]
         self._rebuild_menu(status_lines)
+        self._populate_app_menu(status_lines)
+        self._sync_webview()
+
+    def _status_menuitems(self, status_lines):
+        """Felles bygger for statuslinjene (avganger/situasjoner), gjenbrukt i
+        statusmenyen og app-menyen. Øverst vises «status nå» (farget ball +
+        neste tog + tidspunkt), så menyen gir samme info som menylinje-ikonet
+        når det er skjult. ZWS gjør ellers like titler unike så rumps ikke slår
+        dem sammen. Header-linja bytter retning i korridor-modus."""
+        headline = getattr(self, "_headline", "")
+        prefix = [headline, ""] if headline else []
+        lines = prefix + list(status_lines)
+        items = [rumps.MenuItem((text or " ") + ZWS * i)
+                 for i, text in enumerate(lines)]
+        if self.to_id and len(items) > len(prefix):
+            items[len(prefix)].set_callback(self.swap_direction)  # header-linja
+        return items
 
     def _rebuild_menu(self, status_lines):
-        items = []
-        for i, text in enumerate(status_lines):
-            items.append(rumps.MenuItem((text or " ") + ZWS * i))
-        # Klikk på header-linjen (fra → til ⇄) bytter retning, som swap-pilen
-        # i dashbordet. Kun i korridor-modus — som den deaktiverte pilen ellers.
-        if self.to_id and items:
-            items[0].set_callback(self.swap_direction)
+        items = self._status_menuitems(status_lines)
+        items += [None]
+        items += self._action_menuitems()
         items += [
-            None,
-            rumps.MenuItem("Åpne dashbord", callback=self.open_dashboard),
-            self._from_submenu(),
-            self._to_submenu(),
-            rumps.MenuItem("Oppdater nå", callback=self.refresh),
             None,
             rumps.MenuItem("Avslutt", callback=rumps.quit_application),
         ]
@@ -213,10 +526,15 @@ class TogpulsBar(rumps.App):
         if deps:
             nxt = deps[0]
             mins = self._mins_until(nxt)
-            when = "nå" if not mins else f"{mins} min"
-            self.title = f"{dot} {nxt['line']} {when}{self._mark(nxt)}"
+            when = "nå" if not mins else f"{mins}m"
+            self.title = f"{dot}{nxt['line']} {when}{self._mark(nxt)}"
+            when_txt = "nå" if not mins else f"om {mins} min"
+            self._headline = (
+                f"{dot} {nxt['line']} kl {self._hhmm(nxt)} · {when_txt}{self._mark(nxt)}"
+            )
         else:
-            self.title = f"{dot} 🚆 –"
+            self.title = f"{dot}–"
+            self._headline = f"{dot} Ingen avganger i tidsvinduet"
 
         # Header
         win = (sp.get("window") or {}).get("minutter", HORIZON_MIN)
@@ -434,8 +752,146 @@ def _selftest():
     print("\n".join(lines))
 
 
+# ---- global hurtigtast (Carbon RegisterEventHotKey) --------------------
+# Carbon-hotkeys krever INGEN Tilgjengelighet-tillatelse, i motsetning til
+# NSEvent-globale monitorer. Standard: ⌃⌥⌘T. Overstyr keycode/modifiers med
+# TOGPULS_HOTKEY_KEYCODE / TOGPULS_HOTKEY_MODS om ønskelig.
+import ctypes
+import ctypes.util
+
+# Carbon-modifikatorer (ikke de samme bitene som Cocoa/NSEvent).
+_CARBON_CMD, _CARBON_OPT, _CARBON_CTRL, _CARBON_SHIFT = 0x0100, 0x0800, 0x1000, 0x0200
+_DEFAULT_KEYCODE = int(os.environ.get("TOGPULS_HOTKEY_KEYCODE", "17"))  # kVK_ANSI_T
+_DEFAULT_MODS = int(
+    os.environ.get("TOGPULS_HOTKEY_MODS", str(_CARBON_CTRL | _CARBON_OPT | _CARBON_CMD))
+)
+
+# Holder referanser i live så ikke GC river dem bort under kjøring.
+_hotkey_state = {}
+
+
+class _EventHotKeyID(ctypes.Structure):
+    _fields_ = [("signature", ctypes.c_uint32), ("id", ctypes.c_uint32)]
+
+
+class _EventTypeSpec(ctypes.Structure):
+    _fields_ = [("eventClass", ctypes.c_uint32), ("eventKind", ctypes.c_uint32)]
+
+
+def _install_global_hotkey(on_fire):
+    """Registrer en systemglobal hurtigtast. Returnerer True ved suksess.
+    Feiler stille (returnerer False) hvis Carbon ikke er tilgjengelig —
+    appen fungerer fint uten hurtigtasten."""
+    try:
+        carbon_path = ctypes.util.find_library("Carbon") or (
+            "/System/Library/Frameworks/Carbon.framework/Carbon"
+        )
+        carbon = ctypes.CDLL(carbon_path)
+    except OSError:
+        return False
+
+    # Eksplisitte signaturer er kritisk: uten restype=c_void_p trunkerer
+    # ctypes 64-bits pekere til 32 bit, som gir krasj.
+    carbon.GetApplicationEventTarget.restype = ctypes.c_void_p
+    carbon.GetApplicationEventTarget.argtypes = []
+    carbon.InstallEventHandler.restype = ctypes.c_int32
+    carbon.InstallEventHandler.argtypes = [
+        ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint32,
+        ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p,
+    ]
+    carbon.RegisterEventHotKey.restype = ctypes.c_int32
+    carbon.RegisterEventHotKey.argtypes = [
+        ctypes.c_uint32, ctypes.c_uint32, _EventHotKeyID,
+        ctypes.c_void_p, ctypes.c_uint32, ctypes.POINTER(ctypes.c_void_p),
+    ]
+
+    kEventClassKeyboard = 0x6B657962  # 'keyb'
+    kEventHotKeyPressed = 6
+    HANDLER = ctypes.CFUNCTYPE(
+        ctypes.c_int32, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p
+    )
+
+    def _handler(next_handler, event, user_data):
+        try:
+            on_fire()
+        except Exception:
+            pass
+        return 0
+
+    handler = HANDLER(_handler)
+    spec = _EventTypeSpec(kEventClassKeyboard, kEventHotKeyPressed)
+    target = carbon.GetApplicationEventTarget()
+    carbon.InstallEventHandler(
+        target, ctypes.cast(handler, ctypes.c_void_p), 1,
+        ctypes.byref(spec), None, None
+    )
+
+    hk_id = _EventHotKeyID(0x54475053, 1)  # 'TGPS'
+    hk_ref = ctypes.c_void_p()
+    status = carbon.RegisterEventHotKey(
+        ctypes.c_uint32(_DEFAULT_KEYCODE),
+        ctypes.c_uint32(_DEFAULT_MODS),
+        hk_id,
+        target,
+        0,
+        ctypes.byref(hk_ref),
+    )
+    if status != 0:
+        return False
+    _hotkey_state.update(carbon=carbon, handler=handler, spec=spec, ref=hk_ref)
+    return True
+
+
+def _enable_dock_and_hotkey():
+    """Gjør appen til en vanlig app (Dock-ikon + app-veksler), hekt en
+    Dock-meny på rumps' delegat, og registrer den globale hurtigtasten."""
+    from AppKit import (
+        NSApplication, NSApplicationActivationPolicyRegular, NSImage,
+    )
+    import rumps.rumps as _rc
+
+    nsapp = NSApplication.sharedApplication()
+    nsapp.setActivationPolicy_(NSApplicationActivationPolicyRegular)
+
+    # Sett app-ikonet ved kjøretid, så det vises også når vi kjører fra kilde
+    # (der prosessen ellers arver Pythons ikon). Den bygde .app-en bruker
+    # uansett iconfile fra Info.plist.
+    here = os.path.dirname(os.path.abspath(__file__))
+    for cand in (
+        os.path.join(here, "assets", "Togpuls.icns"),
+        os.path.join(here, "..", "togpuls", "static", "icons", "icon-512.png"),
+    ):
+        if os.path.exists(cand):
+            img = NSImage.alloc().initWithContentsOfFile_(cand)
+            if img is not None:
+                nsapp.setApplicationIconImage_(img)
+                break
+
+    class _DockNSApp(_rc.NSApp):
+        def applicationDockMenu_(self, sender):
+            app = getattr(rumps.App, "*app_instance", None)
+            return app.build_dock_menu() if app is not None else None
+
+        def applicationShouldHandleReopen_hasVisibleWindows_(self, sender, flag):
+            # Klikk på Dock-ikonet åpner dashbord-vinduet.
+            app = getattr(rumps.App, "*app_instance", None)
+            if app is not None:
+                app.open_window()
+            return True
+
+    _rc.NSApp = _DockNSApp  # run() oppretter delegaten fra denne globalen
+
+    def _fire():
+        app = getattr(rumps.App, "*app_instance", None)
+        if app is not None:
+            app.popup_menu_centered()
+
+    _install_global_hotkey(_fire)
+
+
 if __name__ == "__main__":
     if os.environ.get("TOGPULS_SELFTEST") == "1":
         _selftest()
     else:
+        _enable_dock_and_hotkey()
         TogpulsBar().run()
