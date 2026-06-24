@@ -17,7 +17,7 @@ jobs:
   build:
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Bestem versjon
         id: version
@@ -31,7 +31,7 @@ jobs:
           echo "$tag" > macos/VERSION
           echo "Bygger Togpuls $tag"
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
@@ -55,14 +55,14 @@ jobs:
           echo "SHA256: $sha"
 
       - name: Last opp DMG som artefakt
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: Togpuls-${{ steps.version.outputs.version }}-dmg
           path: ${{ steps.sha.outputs.dmg }}
 
       - name: Opprett GitHub Release
         if: startsWith(github.ref, 'refs/tags/macos-v')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: ${{ steps.sha.outputs.dmg }}
           name: Togpuls ${{ steps.version.outputs.version }}
