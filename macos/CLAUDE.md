@@ -111,8 +111,59 @@ Begge veier er no-op når ruten er uendret, så det blir ingen ekko-loop og
 `macos/assets/Togpuls.icns` er rendret fra `togpuls/static/icons/icon.svg`
 (multi-størrelse, opp til 1024px). Koblet inn via `iconfile` i `setup.py`.
 
-## Deling
+## Deling og distribusjon
 
-Pakk `.app`-en i en zip (bevarer bundle-strukturen). Usignert app trigger
-Gatekeeper hos mottaker — høyreklikk → Åpne første gang, eller
-`xattr -dr com.apple.quarantine /Applications/Togpuls.app`.
+Distribusjonen står på tre ben: GitHub Releases med DMG, et Homebrew
+Cask-tap, og ad-hoc-signering. Det er ingen Apple Developer-konto i
+spill, så ingen Developer ID og ingen notarisering — vi jobber rundt
+Gatekeeper med `xattr`.
+
+### DMG-en (`make macos-dmg`)
+
+Bygger `macos/dist/Togpuls-<versjon>.dmg`. Avhenger av `create-dmg`
+(`brew install create-dmg`). DMG-vinduet har Togpuls-ikonet og en
+Applications-symlenke, pluss en `Installer.command` som brukeren
+dobbeltklikker etter at app-en er dratt over. Scriptet kjører `xattr
+-dr com.apple.quarantine` på app-en og starter den. Bakgrunnsbildet
+genereres av `macos/installer/render_dmg_background.py` (Pillow) første
+gang `macos-dmg` kjøres, og caches deretter.
+
+App-en signeres ad-hoc (`codesign --sign -`) før DMG-en pakkes —
+påkrevd for at arm64-binærer i det hele tatt skal kjøre, gir ingen
+Gatekeeper-godkjenning.
+
+### Release-workflowen
+
+`.github/workflows/release.yml` kjører på tag-push (`v*`) eller manuelt.
+Den skriver tag-versjonen til `VERSION`, kjører `make macos-dmg` på en
+`macos-14`-runner, regner ut SHA256 og oppretter en GitHub Release med
+DMG-en som asset. Releasen sin beskrivelse inneholder installasjons-
+stegene og SHA256-en — sistnevnte brukes til å oppdatere Cask-en.
+
+### Homebrew Cask
+
+Cask-fila ligger i et separat repo, `kengu/homebrew-togpuls`, og brukes
+slik:
+
+    brew tap kengu/togpuls
+    brew install --cask togpuls
+
+Cask-en peker på DMG-en i siste release. En `postflight`-blokk fjerner
+quarantine fra `Togpuls.app` etter install, så brew-veien gir ingen
+Gatekeeper-dialoger. Når en ny release publiseres må `Casks/togpuls.rb`
+oppdateres med ny `version` og `sha256` — manuelt for nå, kan
+automatiseres med en bump-action senere.
+
+### Versjon
+
+Én kilde: `VERSION` i repo-rot. Leses av `macos/setup.py`
+(`CFBundleVersion` / `CFBundleShortVersionString`) og av Makefile
+(`MACOS_DMG`-navnet). Release-workflowen overskriver fila med tag-
+versjonen før bygg, så lokale bygg og CI-bygg er aldri uenige.
+
+### Direktelink-fallback
+
+For brukere som henter DMG-en fra GitHub uten Homebrew: dra app-en til
+Applications, dobbeltklikk `Installer.command` i DMG-vinduet. Den
+manuelle nødløsningen er `xattr -dr com.apple.quarantine
+/Applications/Togpuls.app` etterfulgt av å åpne app-en.

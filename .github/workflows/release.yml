@@ -1,0 +1,90 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versjon (uten v-prefiks), f.eks. 0.1.0'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bestem versjon
+        id: version
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            tag="${{ inputs.version }}"
+          else
+            tag="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "version=$tag" >> "$GITHUB_OUTPUT"
+          echo "$tag" > VERSION
+          echo "Bygger Togpuls $tag"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Installer create-dmg
+        run: brew install create-dmg
+
+      - name: Bygg .app
+        run: make macos-app MACOS_PY=python3.12
+
+      - name: Ad-hoc-signer og bygg DMG
+        run: make macos-dmg MACOS_PY=python3.12
+
+      - name: Hent SHA256
+        id: sha
+        run: |
+          dmg="macos/dist/Togpuls-${{ steps.version.outputs.version }}.dmg"
+          sha=$(shasum -a 256 "$dmg" | awk '{print $1}')
+          echo "sha256=$sha" >> "$GITHUB_OUTPUT"
+          echo "dmg=$dmg" >> "$GITHUB_OUTPUT"
+          echo "DMG: $dmg"
+          echo "SHA256: $sha"
+
+      - name: Last opp DMG som artefakt
+        uses: actions/upload-artifact@v4
+        with:
+          name: Togpuls-${{ steps.version.outputs.version }}-dmg
+          path: ${{ steps.sha.outputs.dmg }}
+
+      - name: Opprett GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.sha.outputs.dmg }}
+          name: Togpuls ${{ steps.version.outputs.version }}
+          body: |
+            ## Togpuls ${{ steps.version.outputs.version }}
+
+            **DMG SHA256:** `${{ steps.sha.outputs.sha256 }}`
+
+            ### Installer (DMG)
+
+            1. Last ned `Togpuls-${{ steps.version.outputs.version }}.dmg` nedenfor og åpne den.
+            2. Dra **Togpuls** til **Applications** i DMG-vinduet.
+            3. Dobbeltklikk **Installer.command** for å fullføre installasjonen.
+               Terminal åpner og fjerner macOS sitt quarantine-flagg, og starter appen.
+
+            ### Eller via Homebrew
+
+            ```
+            brew tap kengu/togpuls
+            brew install --cask togpuls
+            ```
+
+            > Appen er ad-hoc-signert, ikke notarisert. Installer.command og
+            > Homebrew-postflighten fjerner quarantine, så Gatekeeper slipper
+            > app-en gjennom uten ekstra dialoger.

@@ -1,14 +1,21 @@
 PY := venv/bin/python
 PIP := venv/bin/pip
 
+# Felles versjon for setup.py, Makefile, DMG-navn og release-workflow.
+VERSION := $(shell cat VERSION)
+
 # macOS menylinje-app bygges med py2app, som trenger et framework-Python
 # (Homebrew/python.org). Xcode/CommandLineTools sin python3 kan ikke signere
 # bunten, så denne appen får sin egen venv adskilt fra hovedvenv-en.
 MACOS_PY ?= python3.12
 MACOS_VENV := macos/.venv
+MACOS_APP := macos/dist/Togpuls.app
+MACOS_DMG := macos/dist/Togpuls-$(VERSION).dmg
+DMG_BACKGROUND := macos/installer/dmg-background.png
+INSTALLER_CMD := macos/installer/Installer.command
 
 .DEFAULT_GOAL := help
-.PHONY: help configure serve cli clean macos-run macos-app macos-clean
+.PHONY: help configure serve cli clean macos-run macos-app macos-sign macos-dmg macos-clean
 
 help:                ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -54,5 +61,35 @@ macos-app: $(MACOS_VENV)/.installed  ## Build standalone macos/dist/Togpuls.app 
 	cd macos && .venv/bin/python setup.py py2app
 	@echo "→ macos/dist/Togpuls.app"
 
+macos-sign: macos-app  ## Ad-hoc-signer Togpuls.app (kreves for arm64)
+	@codesign --force --deep --sign - "$(MACOS_APP)"
+	@codesign --verify --verbose=2 "$(MACOS_APP)"
+
+$(DMG_BACKGROUND): macos/installer/render_dmg_background.py $(MACOS_VENV)/.installed
+	@$(MACOS_VENV)/bin/pip install --quiet Pillow
+	@$(MACOS_VENV)/bin/python macos/installer/render_dmg_background.py "$@"
+
+macos-dmg: macos-sign $(DMG_BACKGROUND)  ## Bygg signert DMG med Installer.command
+	@command -v create-dmg >/dev/null || { \
+	    echo "Trenger create-dmg (brew install create-dmg)."; \
+	    exit 1; }
+	@chmod +x "$(INSTALLER_CMD)"
+	@rm -f "$(MACOS_DMG)"
+	create-dmg \
+	    --volname "Togpuls $(VERSION)" \
+	    --background "$(DMG_BACKGROUND)" \
+	    --window-pos 200 120 \
+	    --window-size 600 400 \
+	    --icon-size 96 \
+	    --icon "Togpuls.app" 150 180 \
+	    --app-drop-link 450 180 \
+	    --add-file "Installer.command" "$(INSTALLER_CMD)" 300 320 \
+	    --hide-extension "Togpuls.app" \
+	    --no-internet-enable \
+	    "$(MACOS_DMG)" \
+	    "$(MACOS_APP)"
+	@echo "→ $(MACOS_DMG)"
+	@shasum -a 256 "$(MACOS_DMG)"
+
 macos-clean:         ## Remove the macOS venv and build artifacts
-	rm -rf $(MACOS_VENV) macos/build macos/dist
+	rm -rf $(MACOS_VENV) macos/build macos/dist $(DMG_BACKGROUND)

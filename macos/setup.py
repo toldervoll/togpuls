@@ -6,9 +6,16 @@
 LSUIElement=False gir appen et Dock-ikon (og plass i app-veksleren), som er
 den pålitelige reserveveien til menyen når menylinje-ikonet skjules bak notch.
 Dock-menyen og den globale hurtigtasten settes opp i togpuls_bar.py.
+
+Versjonen leses fra repo-rot-fila ``VERSION`` så ``setup.py``, Makefile og
+release-workflowen alltid er enige.
 """
 
+from pathlib import Path
+
 from setuptools import setup
+
+VERSION = (Path(__file__).resolve().parent.parent / "VERSION").read_text().strip()
 
 APP = ["togpuls_bar.py"]
 OPTIONS = {
@@ -20,8 +27,8 @@ OPTIONS = {
         "CFBundleName": "Togpuls",
         "CFBundleDisplayName": "Togpuls",
         "CFBundleIdentifier": "no.kengu.togpuls.menubar",
-        "CFBundleVersion": "1.0",
-        "CFBundleShortVersionString": "1.0",
+        "CFBundleVersion": VERSION,
+        "CFBundleShortVersionString": VERSION,
         "LSUIElement": False,
     },
     "packages": ["rumps"],
