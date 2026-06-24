@@ -176,9 +176,12 @@ URL-en trengs kun ved første `tap` — videre `upgrade` finner cask-en
 selv. En `postflight`-blokk fjerner quarantine fra `Togpuls.app` etter
 install, så brew-veien gir ingen Gatekeeper-dialoger.
 
-Når en ny release publiseres må `Casks/togpuls.rb` oppdateres med ny
-`version` og `sha256` — manuelt for nå, kan automatiseres senere via en
-GitHub Action som leser release-asseten og committer en bump.
+Når en ny release publiseres oppdaterer release-workflowen
+`Casks/togpuls.rb` automatisk — den sed-bytter `version` og `sha256` og
+committer endringen til `main` som `github-actions[bot]`. Steget kjøres
+etter at GitHub Release er opprettet, så brukere kan kjøre `brew upgrade
+--cask togpuls` så snart workflowen er ferdig. Ingen manuell etterarbeid
+mellom `make macos-release` og at brew har den nye versjonen.
 
 ### Versjon
 

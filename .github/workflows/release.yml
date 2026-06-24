@@ -71,20 +71,58 @@ jobs:
 
             **DMG SHA256:** `${{ steps.sha.outputs.sha256 }}`
 
-            ### Installer (DMG)
-
-            1. Last ned `Togpuls-${{ steps.version.outputs.version }}.dmg` nedenfor og åpne den.
-            2. Dra **Togpuls** til **Applications** i DMG-vinduet.
-            3. Dobbeltklikk **Installer.command** for å fullføre installasjonen.
-               Terminal åpner og fjerner macOS sitt quarantine-flagg, og starter appen.
-
-            ### Eller via Homebrew
+            ### Anbefalt: Homebrew
 
             ```
-            brew tap kengu/togpuls
+            brew tap kengu/togpuls https://github.com/kengu/togpuls
+            brew trust kengu/togpuls
             brew install --cask togpuls
             ```
 
-            > Appen er ad-hoc-signert, ikke notarisert. Installer.command og
-            > Homebrew-postflighten fjerner quarantine, så Gatekeeper slipper
-            > app-en gjennom uten ekstra dialoger.
+            Senere oppdatering: `brew upgrade --cask togpuls`.
+
+            ### Eller direkte DMG
+
+            Last ned `Togpuls-${{ steps.version.outputs.version }}.dmg`
+            nedenfor og dra Togpuls til Applications. Følg
+            [togpuls.kengu.no/install](https://togpuls.kengu.no/install)
+            for det engangs-Privacy-steget.
+
+            > Appen er ad-hoc-signert, ikke notarisert. Homebrew-postflighten
+            > fjerner quarantine automatisk; direkte DMG-install krever ett
+            > ekstra trinn i Systeminnstillinger.
+
+      - name: Auto-bump Casks/togpuls.rb
+        if: startsWith(github.ref, 'refs/tags/macos-v')
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          SHA256: ${{ steps.sha.outputs.sha256 }}
+        run: |
+          set -eu
+
+          # Bytt til main slik at vi committer på en navngitt branch, ikke
+          # på tag-commit-en (detached HEAD).
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
+
+          # Sed-bytt version og sha256 i Casks/togpuls.rb.
+          sed -i.bak -E "s|version \"[^\"]+\"|version \"$VERSION\"|" Casks/togpuls.rb
+          sed -i.bak -E "s|sha256 \"[a-f0-9]+\"|sha256 \"$SHA256\"|" Casks/togpuls.rb
+          rm -f Casks/togpuls.rb.bak
+
+          # Stopp pent hvis cask allerede er på riktig versjon
+          # (f.eks. workflow_dispatch re-run).
+          if git diff --quiet Casks/togpuls.rb; then
+            echo "Cask er allerede $VERSION — ingenting å committe."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/togpuls.rb
+          git commit -m "Cask: bump til $VERSION (auto)
+
+          Auto-bump fra release-workflowen for macos-v$VERSION.
+          DMG SHA256: $SHA256"
+          git push origin main
