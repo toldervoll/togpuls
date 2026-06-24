@@ -1722,6 +1722,12 @@ if ("serviceWorker" in navigator) {
 // ── macOS-app: nedlastings-hero + footer-versjon ───────────────────────────
 
 (function initMacDownloadHero() {
+  // Hopp over hero-en når dashbordet vises inne i menylinje-appen sin
+  // egen WKWebView — flagget settes som WKUserScript i togpuls_bar.py.
+  // Footer-versjonen fetcher vi fortsatt så «macOS-app · v0.1.X» viser
+  // hvilken versjon brukeren faktisk har.
+  const inApp = typeof window !== "undefined" && window.__togpulsApp === true;
+
   // Hent versjonsmetadata fra backend så både hero og footer-link kan vise
   // "· v0.1.0". Bevisst fire-and-forget: hvis API-en feiler, vises de bare
   // uten versjon. Backenden cacher i 15 min så dette koster ~null på server.
@@ -1745,9 +1751,10 @@ if ("serviceWorker" in navigator) {
   }
 
   // Hero vises kun for macOS-brukere som ikke har dismissed den. iPad/iPhone
-  // ekskluderes — Mac-app-en gir ingen mening der.
+  // ekskluderes — Mac-app-en gir ingen mening der. Webviewen inne i selve
+  // appen ekskluderes også; brukeren har den allerede installert.
   const hero = $("mac-hero");
-  if (!hero) return;
+  if (!hero || inApp) return;
 
   const ua = navigator.userAgent || "";
   const isMac = /\b(Mac(?:intosh|Intel)?)\b/.test(ua) && !/iPhone|iPad|iPod/.test(ua);

@@ -1417,8 +1417,9 @@ h2 {
 
 /* ── macOS-app nedlasting (hero + footer-versjon) ─────────────────────── */
 .mac-hero {
+  position: relative;  /* anker for .mac-hero-dismiss */
   margin: 0 0 var(--space-md);
-  padding: 14px 18px;
+  padding: 14px 44px 14px 18px;  /* ekstra høyre-padding gir dismiss-knappen plass */
   border-radius: 14px;
   background:
     linear-gradient(135deg, var(--lavender-70) 0%, var(--lavender-90) 100%);
@@ -1481,6 +1482,9 @@ h2 {
   font-weight: var(--fw-reg);
 }
 .mac-hero-dismiss {
+  position: absolute;
+  top: 10px;
+  right: 10px;
   background: transparent;
   border: 0;
   color: var(--lavender-40);
@@ -1489,7 +1493,6 @@ h2 {
   border-radius: 6px;
   display: inline-flex;
   align-items: center;
-  flex: 0 0 auto;
   transition: color 0.15s ease, background-color 0.15s ease;
 }
 .mac-hero-dismiss:hover {
@@ -1506,7 +1509,7 @@ h2 {
 
 @media (max-width: 560px) {
   .mac-hero-inner { flex-wrap: wrap; }
-  .mac-hero-text { flex-basis: calc(100% - 60px); }
+  .mac-hero-text { flex-basis: calc(100% - 60px); }  /* dele rad med ikonet */
   .mac-hero-cta { flex-basis: 100%; justify-content: center; }
 }
 

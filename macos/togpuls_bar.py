@@ -230,7 +230,10 @@ class TogpulsBar(rumps.App):
             NSBackingStoreBuffered, NSApplication,
         )
         from Foundation import NSURL, NSURLRequest
-        from WebKit import WKWebView, WKWebViewConfiguration
+        from WebKit import (
+            WKWebView, WKWebViewConfiguration,
+            WKUserScript, WKUserContentController,
+        )
 
         nsapp = NSApplication.sharedApplication()
         if getattr(self, "_window", None) is not None:
@@ -250,9 +253,19 @@ class TogpulsBar(rumps.App):
         win.setReleasedWhenClosed_(False)  # gjenbruk vinduet ved ny åpning
         win.center()
 
-        web = WKWebView.alloc().initWithFrame_configuration_(
-            rect, WKWebViewConfiguration.alloc().init()
+        # Konfigurér webviewen med en lite JS som settes på window før siden
+        # lastes. Dashbordet bruker dette flagget til å skjule «Last ned for
+        # Mac»-hero-en — den er meningsløs når brukeren allerede er inne i
+        # app-en. WKUserScriptInjectionTimeAtDocumentStart = 0.
+        config = WKWebViewConfiguration.alloc().init()
+        controller = WKUserContentController.alloc().init()
+        controller.addUserScript_(
+            WKUserScript.alloc().initWithSource_injectionTime_forMainFrameOnly_(
+                "window.__togpulsApp = true;", 0, True,
+            )
         )
+        config.setUserContentController_(controller)
+        web = WKWebView.alloc().initWithFrame_configuration_(rect, config)
         web.setAutoresizingMask_(2 | 16)  # bredde + høyde følger vinduet
         win.setContentView_(web)
         # Observer URL-endringer i webviewen (Fra/Til endret inne i dashbordet).
