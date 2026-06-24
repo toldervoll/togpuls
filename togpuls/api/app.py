@@ -13,11 +13,12 @@ from typing import Annotated
 import httpx
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from togpuls.analysis import analyse, build_timeline, collect_situation_ids
 from togpuls.api.cache import TTLCache
+from togpuls.api.github_release import latest_macos_release
 from togpuls.clients.disruptions import fetch_estimates
 from togpuls.clients.journey_planner import query_stop_place_departures
 from togpuls.models import Analysis
@@ -27,6 +28,7 @@ DEFAULT_HORIZON_MIN = 90
 TIMELINE_SPAN_MIN = 90
 TIMELINE_BUCKET_MIN = 5
 CACHE_TTL_SECONDS = 20.0
+RELEASE_CACHE_TTL_SECONDS = 15 * 60.0  # 15 min — releases er sjeldne, og
 
 # Common stations — IDs taken from the IDs that the Journey Planner actually
 # emits in `serviceJourney.quays[].stopPlace.id` (the Entur geocoder returns
@@ -60,6 +62,9 @@ COMMON_STATIONS: dict[str, str] = {
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
 _cache = TTLCache(ttl_seconds=CACHE_TTL_SECONDS)
+# Egen cache for GitHub-release-oppslag. GitHubs anonyme API-grense er
+# 60 req/h pr. IP — med 15 min TTL bruker vi ~4 av dem fra én instans.
+_release_cache = TTLCache(ttl_seconds=RELEASE_CACHE_TTL_SECONDS)
 
 # Shared query parameter: how far ahead departures are fetched, in minutes.
 HorizonMin = Annotated[
@@ -548,6 +553,50 @@ async def service_worker() -> FileResponse:
         media_type="application/javascript",
         headers={"Service-Worker-Allowed": "/"},
     )
+
+
+@app.get("/download/macos", include_in_schema=False)
+async def download_macos_redirect():
+    """302-redirect til siste macOS DMG på GitHub Releases.
+
+    Brukes som en stabil offentlig nedlastings-URL (``/download/macos``)
+    selv om filnavnet inneholder versjon. Slår opp via GitHub-API-en og
+    cacher i 15 min, så vi unngår å rate limite GitHub for ingenting.
+    """
+    info = await _release_cache.get_or_compute(
+        ("macos-latest",),
+        lambda: latest_macos_release(app.state.http_client),
+    )
+    if not info:
+        raise HTTPException(
+            status_code=503,
+            detail="Ingen macOS-release tilgjengelig ennå.",
+        )
+    return RedirectResponse(url=info["url"], status_code=302)
+
+
+@app.get(
+    "/api/v1/download/macos",
+    tags=["reference"],
+    summary="Metadata for siste macOS-release",
+    description=(
+        "Versjon, nedlastings-URL og publiseringstid for siste macOS-DMG. "
+        "Brukes av nedlastingsknappene på dashbordet for å vise versjon "
+        "ved siden av lenken. ``/download/macos`` 302-redirecter til samme DMG."
+    ),
+    response_description="Metadata om siste release (eller 503 om ingen finnes).",
+)
+async def download_macos_meta() -> dict:
+    info = await _release_cache.get_or_compute(
+        ("macos-latest",),
+        lambda: latest_macos_release(app.state.http_client),
+    )
+    if not info:
+        raise HTTPException(
+            status_code=503,
+            detail="Ingen macOS-release tilgjengelig ennå.",
+        )
+    return info
 
 
 @app.get(

@@ -1718,3 +1718,56 @@ if ("serviceWorker" in navigator) {
     });
   });
 }
+
+// ── macOS-app: nedlastings-hero + footer-versjon ───────────────────────────
+
+(function initMacDownloadHero() {
+  // Hent versjonsmetadata fra backend så både hero og footer-link kan vise
+  // "· v0.1.0". Bevisst fire-and-forget: hvis API-en feiler, vises de bare
+  // uten versjon. Backenden cacher i 15 min så dette koster ~null på server.
+  const versionTargets = [];
+  const heroVersion = $("mac-hero-version");
+  const footerVersion = $("footer-macos-version");
+  if (heroVersion) versionTargets.push(heroVersion);
+  if (footerVersion) versionTargets.push(footerVersion);
+
+  if (versionTargets.length) {
+    fetch("/api/v1/download/macos")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((info) => {
+        if (!info || !info.version) return;
+        const label = " · v" + info.version;
+        versionTargets.forEach((el) => {
+          el.textContent = label;
+        });
+      })
+      .catch(() => {});
+  }
+
+  // Hero vises kun for macOS-brukere som ikke har dismissed den. iPad/iPhone
+  // ekskluderes — Mac-app-en gir ingen mening der.
+  const hero = $("mac-hero");
+  if (!hero) return;
+
+  const ua = navigator.userAgent || "";
+  const isMac = /\b(Mac(?:intosh|Intel)?)\b/.test(ua) && !/iPhone|iPad|iPod/.test(ua);
+  if (!isMac) return;
+
+  let dismissed = false;
+  try {
+    dismissed = localStorage.getItem("togpuls-mac-hero-dismissed") === "1";
+  } catch (e) {}
+  if (dismissed) return;
+
+  hero.hidden = false;
+
+  const dismissBtn = $("mac-hero-dismiss");
+  if (dismissBtn) {
+    dismissBtn.addEventListener("click", () => {
+      hero.hidden = true;
+      try {
+        localStorage.setItem("togpuls-mac-hero-dismissed", "1");
+      } catch (e) {}
+    });
+  }
+})();

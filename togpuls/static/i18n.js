@@ -221,10 +221,16 @@ const I18N_STRINGS = {
 
     "footer_pre": "togpuls · data: ",
     "footer_source": "Entur Journey Planner v3",
-    "footer_post": " · oppdatering hver 30 s · buffer 20 s",
+    "footer_post": "",
     "footer_about": "Om",
     "footer_github": "GitHub",
     "footer_api": "API",
+    "footer_macos": "macOS-app",
+
+    "mac_hero_title": "Togpuls i menylinjen",
+    "mac_hero_sub": "Last ned macOS-appen og få neste avgang ett klikk unna.",
+    "mac_hero_cta": "Last ned for Mac",
+    "mac_hero_dismiss": "Lukk",
 
     // About page
     "about_title": "Om togpuls",
@@ -446,10 +452,16 @@ const I18N_STRINGS = {
 
     "footer_pre": "togpuls · data: ",
     "footer_source": "Entur Journey Planner v3",
-    "footer_post": " · refresh every 30 s · buffer 20 s",
+    "footer_post": "",
     "footer_about": "About",
     "footer_github": "GitHub",
     "footer_api": "API",
+    "footer_macos": "macOS app",
+
+    "mac_hero_title": "Togpuls in the menu bar",
+    "mac_hero_sub": "Download the macOS app and keep the next departure one click away.",
+    "mac_hero_cta": "Download for Mac",
+    "mac_hero_dismiss": "Dismiss",
 
     // About page
     "about_title": "About togpuls",

@@ -123,6 +123,39 @@
 
     <main id="app">
 
+      <!-- macOS-app nedlasting: vises kun for Mac-brukere, persistent dismiss. -->
+      <aside id="mac-hero" class="mac-hero" hidden>
+        <div class="mac-hero-inner">
+          <svg class="mac-hero-mark" viewBox="0 0 24 24" aria-hidden="true">
+            <g stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none">
+              <line x1="12" y1="12" x2="4"  y2="12"/>
+              <line x1="12" y1="12" x2="20" y2="12"/>
+              <line x1="12" y1="12" x2="12" y2="4"/>
+              <line x1="12" y1="12" x2="12" y2="20"/>
+              <line x1="12" y1="12" x2="6.5"  y2="6.5"/>
+              <line x1="12" y1="12" x2="17.5" y2="17.5"/>
+              <line x1="12" y1="12" x2="17.5" y2="6.5"/>
+              <line x1="12" y1="12" x2="6.5"  y2="17.5"/>
+            </g>
+            <circle cx="12" cy="12" r="2.6" fill="currentColor"/>
+            <circle cx="12" cy="12" r="1.2" class="mac-hero-mark-dot"/>
+          </svg>
+          <div class="mac-hero-text">
+            <strong data-i18n="mac_hero_title">Togpuls i menylinjen</strong>
+            <span data-i18n="mac_hero_sub">Last ned macOS-appen og få neste avgang ett klikk unna.</span>
+          </div>
+          <a id="mac-hero-cta" class="mac-hero-cta" href="/download/macos">
+            <span data-i18n="mac_hero_cta">Last ned for Mac</span>
+            <span id="mac-hero-version" class="mac-hero-version"></span>
+          </a>
+          <button id="mac-hero-dismiss" class="mac-hero-dismiss" type="button"
+                  data-i18n-attr="aria-label:mac_hero_dismiss,title:mac_hero_dismiss"
+                  aria-label="Lukk" title="Lukk">
+            <svg class="icon" aria-hidden="true"><use href="#x-mark"/></svg>
+          </button>
+        </div>
+      </aside>
+
       <!-- Console: dark hero surface housing header + timeline -->
       <section class="console">
         <header class="hdr">
@@ -318,9 +351,11 @@
       </section>
 
       <footer class="ftr muted small">
-        <p><span data-i18n="footer_pre">togpuls · data: </span><a href="https://developer.entur.org/pages-journeyplanner-journeyplanner" target="_blank" rel="noopener" data-i18n="footer_source">Entur Journey Planner v3</a><span data-i18n="footer_post"> · oppdatering hver 30 s · buffer 20 s</span></p>
+        <p><span data-i18n="footer_pre">togpuls · data: </span><a href="https://developer.entur.org/pages-journeyplanner-journeyplanner" target="_blank" rel="noopener" data-i18n="footer_source">Entur Journey Planner v3</a></p>
         <nav class="ftr-links" aria-label="togpuls">
           <a href="/about" data-i18n="footer_about">Om</a>
+          <span class="dot" aria-hidden="true">·</span>
+          <a href="/download/macos" data-i18n="footer_macos">macOS-app</a><span id="footer-macos-version" class="footer-macos-version"></span>
           <span class="dot" aria-hidden="true">·</span>
           <a href="https://github.com/kengu/togpuls" target="_blank" rel="noopener" data-i18n="footer_github">GitHub</a>
           <span class="dot" aria-hidden="true">·</span>

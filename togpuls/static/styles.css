@@ -1287,6 +1287,101 @@ h2 {
   font-size: 0.9375rem;
 }
 
+/* ── macOS-app nedlasting (hero + footer-versjon) ─────────────────────── */
+.mac-hero {
+  margin: 0 0 var(--space-md);
+  padding: 14px 18px;
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, var(--lavender-70) 0%, var(--lavender-90) 100%);
+  color: var(--lavender-10);
+  box-shadow: 0 6px 24px rgba(17, 20, 60, 0.18);
+}
+.mac-hero[hidden] { display: none; }
+.mac-hero-inner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.mac-hero-mark {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  color: var(--lavender-40);
+}
+.mac-hero-mark .mac-hero-mark-dot { fill: var(--mint-60); }
+.mac-hero-text {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.mac-hero-text strong {
+  font-weight: var(--fw-med);
+  font-size: 0.95rem;
+  color: var(--lavender-10);
+}
+.mac-hero-text span {
+  font-size: 0.85rem;
+  color: var(--lavender-40);
+}
+.mac-hero-cta {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--mint-60);
+  color: #fff;
+  font-weight: var(--fw-med);
+  font-size: 0.9rem;
+  text-decoration: none;
+  white-space: nowrap;
+  flex: 0 0 auto;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+.mac-hero-cta:hover { background: var(--mint-40); }
+.mac-hero-cta:active { transform: translateY(1px); }
+.mac-hero-cta:focus-visible {
+  outline: 2px solid var(--lavender-10);
+  outline-offset: 2px;
+}
+.mac-hero-version {
+  opacity: 0.85;
+  font-size: 0.8em;
+  font-weight: var(--fw-reg);
+}
+.mac-hero-dismiss {
+  background: transparent;
+  border: 0;
+  color: var(--lavender-40);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+.mac-hero-dismiss:hover {
+  color: var(--lavender-10);
+  background: rgba(255, 255, 255, 0.06);
+}
+.mac-hero-dismiss .icon { width: 14px; height: 14px; }
+
+.footer-macos-version {
+  color: var(--text-muted);
+  margin-left: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 560px) {
+  .mac-hero-inner { flex-wrap: wrap; }
+  .mac-hero-text { flex-basis: calc(100% - 60px); }
+  .mac-hero-cta { flex-basis: 100%; justify-content: center; }
+}
+
 /* ── Footer ───────────────────────────────────────────────────────────── */
 .ftr {
   text-align: center;
