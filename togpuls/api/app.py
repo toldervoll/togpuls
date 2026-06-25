@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from togpuls.analysis import analyse, build_timeline, collect_situation_ids
 from togpuls.api.cache import TTLCache
 from togpuls.api.github_release import latest_macos_release
-from togpuls.clients.disruptions import fetch_estimates
+from togpuls.clients.disruptions import fetch_estimates, fetch_impact
 from togpuls.clients.journey_planner import query_stop_place_departures
 from togpuls.models import Analysis
 
@@ -82,11 +82,12 @@ _TIER_RANK = {"high": 0, "medium": 1, "low": 2}
 
 
 def _tier_from_rates(cancel_rate: float, trouble_rate: float) -> str | None:
-    """Tier implied by the rates drawn as LED meters.
+    """Risk tier implied by a situation's cancellation / trouble rates.
 
-    Thresholds are anchored to the meters' "full" points (CANCEL_RATE_FULL =
-    0.10, TROUBLE_RATE_FULL = 0.30 in static/app.js) so the tier word can never
-    sit lower than the bars suggest. Keep these in sync with those constants.
+    High at cancel_rate >= 0.10 or trouble_rate >= 0.30; medium at >= 0.05 /
+    >= 0.15; otherwise none. These anchors drive the risk-tier chip word and are
+    floored to live corridor rates in _compute_analysis, so the displayed tier
+    never reads lower than current data implies.
     """
     if cancel_rate >= 0.10 or trouble_rate >= 0.30:  # a meter is full
         return "high"
@@ -396,7 +397,19 @@ async def _compute_analysis(
     situation_ids = collect_situation_ids(future_response) | collect_situation_ids(
         past_response
     )
-    estimates = await fetch_estimates(situation_ids, client)
+    # Two parallel enrichments: the per-situation historical estimate
+    # (/situation) feeds the tier meters and history tooltip; the corridor
+    # impact (/impact) predicts how the selected trip's trains are hit. Both
+    # are best-effort and never raise.
+    estimates, impact_preds = await asyncio.gather(
+        fetch_estimates(situation_ids, client),
+        fetch_impact(
+            client,
+            from_stop=stop_place_id,
+            to_stop=to_stop_place_id,
+            at=now.isoformat(),
+        ),
+    )
 
     to_name = COMMON_STATIONS.get(to_stop_place_id) if to_stop_place_id else None
     analysis = analyse(
@@ -531,6 +544,16 @@ async def _compute_analysis(
     )
     # Keep affected-line / passenger aggregates in sync with the survivors.
     _recompute_affected(analysis)
+
+    # Attach the corridor trip-impact prediction to each surviving situation,
+    # keyed by situation number. Independent of the historical estimate above —
+    # the frontend renders it as its own chip alongside the tier meters.
+    if impact_preds:
+        for sit in analysis.get("situations", []):
+            num = sit.get("situation_number")
+            pred = impact_preds.get(num) if num else None
+            if pred:
+                sit["prediction"] = pred
 
     return analysis
 

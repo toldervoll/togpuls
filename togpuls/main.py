@@ -20,7 +20,7 @@ from datetime import datetime
 import httpx
 
 from togpuls.analysis import analyse, collect_situation_ids
-from togpuls.clients.disruptions import fetch_estimates
+from togpuls.clients.disruptions import fetch_estimates, fetch_impact
 from togpuls.clients.journey_planner import query_stop_place_departures
 from togpuls.models import Analysis
 
@@ -58,15 +58,33 @@ async def run(
         )
 
     async with httpx.AsyncClient() as client:
-        estimates = await fetch_estimates(collect_situation_ids(response), client)
+        estimates, impact_preds = await asyncio.gather(
+            fetch_estimates(collect_situation_ids(response), client),
+            fetch_impact(
+                client,
+                from_stop=stop_place_id,
+                to_stop=to_stop_place_id,
+                at=now.isoformat(),
+            ),
+        )
 
-    return analyse(
+    analysis = analyse(
         response,
         now=now,
         horizon_min=horizon_min,
         to_stop_place_id=to_stop_place_id,
         estimates=estimates,
     )
+
+    # Attach the corridor trip-impact prediction to each situation by number.
+    if impact_preds:
+        for sit in analysis.get("situations", []):
+            num = sit.get("situation_number")
+            pred = impact_preds.get(num) if num else None
+            if pred:
+                sit["prediction"] = pred
+
+    return analysis
 
 
 def format_text(a: Analysis) -> str:

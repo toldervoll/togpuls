@@ -32,6 +32,11 @@ class Situation(TypedDict, total=False):
     paavirker_linjer: list[str]
     paavirker_quays: list[str]
     estimate: Any
+    # Corridor trip-impact prediction from the /impact service (assigned in
+    # api/app.py), keyed onto the situation by number. Carries a
+    # departure_prediction (boarding stop) and, when a destination is selected,
+    # an arrival_prediction — each with cancel_probability and delay minutes.
+    prediction: Any
     # Cluster id grouping messages that describe the same underlying event
     # (assigned in api/app.py). Several SX messages — e.g. a cancellation and
     # its "take the next train" advice — share one event_id.

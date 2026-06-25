@@ -1081,58 +1081,56 @@ h2 {
 .sit-list li.tier-medium { border-left-color: var(--sev-middels); }
 .sit-list li.tier-high   { border-left-color: var(--sev-hoy); }
 
-.sit-body  { display: grid; gap: 3px; }
-.sit-body.has-meters {
-  /* meters | situation text + members + lines | chips column */
-  grid-template-columns: auto 1fr auto;
+.sit-body {
+  display: grid;
+  grid-template-columns: 1fr auto;   /* situation text | chips column (right) */
   gap: var(--space-sm);
   align-items: start;
 }
-/* Chips (estimate + cause) get their own right-hand column: side by side on
-   one line when there's room, wrapping only when the row runs out of space. */
-.sit-body.has-meters .sit-meta {
-  justify-content: flex-end;
-  align-content: flex-start;
-}
 .sit-content { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
-
-/* LED rate meters (cancel_rate / trouble_rate) */
-.sit-meters { display: grid; gap: 5px; align-content: start; padding-top: 1px; }
-.rate-meter { display: inline-flex; align-items: center; gap: 5px; }
-.rate-ico { width: 13px; height: 13px; flex-shrink: 0; }
-.meter-cancel  .rate-ico { color: var(--signal-red); }
-.meter-trouble .rate-ico { color: var(--signal-amber); }
-.leds { display: inline-flex; gap: 2px; }
-.leds i {
-  display: block;
-  width: 5px; height: 11px;
-  border-radius: 1px;
-  background: var(--surface-3);
-  border: 1px solid var(--border);
-}
-.meter-cancel  .leds i.on { background: var(--signal-red);   border-color: var(--signal-red); }
-.meter-trouble .leds i.on { background: var(--signal-amber); border-color: var(--signal-amber); }
 
 .sit-text  { color: var(--text); font-size: 0.875rem; line-height: 1.4; flex: 1; min-width: 0; }
 .sit-lines { color: var(--text-muted); font-size: var(--fs-small); flex-basis: 100%; }
 .sit-members { color: var(--text-muted); font-size: var(--fs-small); flex-basis: 100%; opacity: 0.85; }
 .sit-members:empty { display: none; }
-.sit-estimate {
+/* Trip-impact delay pill (boarding train) — accent-tinted, turns red when the
+   typical delay is high. Cancellation risk is the separate .sit-cancel pill. */
+.sit-prediction {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   padding: 1px 8px;
   border-radius: 999px;
   background: var(--surface-3);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
+  border: 1px solid var(--accent);
+  color: var(--accent);
   font-size: 0.6875rem;
   font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.sit-estimate::before { content: "⏱"; font-weight: normal; }
-.sit-estimate.overdue { color: var(--sev-hoy); border-color: var(--sev-hoy); }
+.sit-prediction::before { content: "🚆"; font-weight: normal; }
+.sit-prediction.high-risk { color: var(--sev-hoy); border-color: var(--sev-hoy); }
+.sit-prediction:empty { display: none; }
+/* Cancellation-chance pill — shown when boarding cancel risk > 15%; amber up
+   to 50%, red above (.high). */
+.sit-cancel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  border: 1px solid var(--sev-middels);
+  color: var(--sev-middels);
+  font-size: 0.6875rem;
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.sit-cancel::before { content: "✕"; font-weight: normal; }
+.sit-cancel.high { color: var(--sev-hoy); border-color: var(--sev-hoy); }
+.sit-cancel:empty { display: none; }
 .sit-cause {
   display: inline-flex;
   align-items: center;
@@ -1150,8 +1148,9 @@ h2 {
 .sit-cause:empty { display: none; }
 .sit-meta {
   display: flex;
-  flex-wrap: wrap;       /* chips stack under each other when there's no room */
-  flex-basis: 100%;      /* own row beneath the text, like .sit-lines */
+  flex-wrap: wrap;             /* chips wrap within their column when tight */
+  justify-content: flex-end;   /* right-aligned in their column on wide */
+  align-content: flex-start;
   align-items: baseline;
   gap: 4px 8px;
   position: relative;
@@ -1661,30 +1660,13 @@ h2 {
   .big-counters { grid-template-columns: repeat(3, 1fr); }
   .big { padding: var(--space-sm) var(--space-md); }
 
-  /* Situations: severity label + count on top; below it the body lays the
-     meters, situation text and affected lines out as one wrapping band, while
-     the chips (estimate + cause) drop to their own row at the bottom. */
+  /* Situations: severity label + count on top; the body (situation text and
+     affected lines) and the chip row stack beneath. */
   .sit-list li { grid-template-columns: 1fr auto; row-gap: 5px; }
   .sit-sev { grid-column: 1; grid-row: 1; }
   .sit-count-badge { grid-column: 2; grid-row: 1; }
-  .sit-body { grid-column: 1 / -1; grid-row: 2; }
-  .sit-body.has-meters {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    column-gap: var(--space-sm);
-    row-gap: 4px;
-  }
-  /* Meters on the left; the content (situation text, members, affected lines)
-     stacks vertically beside them, and the chip row drops to its own line. */
-  .sit-body.has-meters .sit-content { flex: 1 1 0; min-width: 0; }
-  .sit-body.has-meters .sit-meta {
-    flex-basis: 100%;
-    flex-direction: row;
-    justify-content: flex-start;
-    align-items: baseline;
-    text-align: left;
-  }
+  .sit-body { grid-column: 1 / -1; grid-row: 2; grid-template-columns: 1fr; }
+  .sit-meta { justify-content: flex-start; }   /* chips stack left below the text */
 }
 
 /* ── Reduced motion ───────────────────────────────────────────────────── */
