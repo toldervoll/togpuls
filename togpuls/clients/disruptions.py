@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import httpx
 
-DISRUPTION_ESTIMATE_URL = "http://localhost:8008/impact"
+DISRUPTION_ESTIMATE_URL = (
+    "https://kix-avvik-disruptions-305411154596.europe-west1.run.app/impact"
+)
 
 
 async def fetch_estimates(
