@@ -945,7 +945,6 @@ h2 {
 .rate-meter { display: inline-flex; align-items: center; gap: 5px; }
 .rate-ico { width: 13px; height: 13px; flex-shrink: 0; }
 .meter-cancel  .rate-ico { color: var(--signal-red); }
-.meter-trouble .rate-ico { color: var(--signal-amber); }
 .leds { display: inline-flex; gap: 2px; }
 .leds i {
   display: block;
@@ -955,7 +954,6 @@ h2 {
   border: 1px solid var(--border);
 }
 .meter-cancel  .leds i.on { background: var(--signal-red);   border-color: var(--signal-red); }
-.meter-trouble .leds i.on { background: var(--signal-amber); border-color: var(--signal-amber); }
 
 .sit-text  { color: var(--text); font-size: 0.875rem; line-height: 1.4; }
 .sit-lines { color: var(--text-muted); font-size: var(--fs-small); }

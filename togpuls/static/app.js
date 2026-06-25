@@ -128,13 +128,18 @@ function departurePrediction(est) {
   return est && typeof est === "object" ? est.departure_prediction : null;
 }
 
-// Chip text: typical delay when the train runs late, else a cancel-risk note
-// when cancellation is non-trivial, else "" (nothing worth flagging).
+// Chip text: the delay as a typical→p90 interval (e.g. "+2–9 min") when the
+// train runs late, falling back to a single value when there is no distinct
+// p90, then to a cancel-risk note, then "" (nothing worth flagging).
 function formatEstimate(est) {
   const dep = departurePrediction(est);
   if (!dep || typeof dep !== "object") return "";
-  if (typeof dep.delay_typ_min === "number" && dep.delay_typ_min > 0) {
-    return t("sit_delay", { dur: fmtDurationMin(dep.delay_typ_min) });
+  const typ = dep.delay_typ_min;
+  const p90 = dep.delay_p90_min;
+  if (typeof typ === "number" && typ > 0) {
+    return (typeof p90 === "number" && p90 > typ)
+      ? t("sit_delay_range", { lo: typ, hi: p90 })
+      : t("sit_delay", { n: typ });
   }
   if (typeof dep.cancel_probability === "number" && dep.cancel_probability >= CANCEL_PROB_ALERT) {
     return t("sit_cancel_risk", { pct: fmtPct(dep.cancel_probability) });
@@ -192,15 +197,16 @@ function applyEstimate(li, est) {
   if (tip) el.title = tip;
 }
 
-// ── Prediction meters (boarding-stop departure_prediction) ───────────────
-// cancel_probability and typical delay become small LED meters left of the
-// text: a cancellation meter (x icon) and a delay meter (clock icon).
+// ── Prediction meter (boarding-stop departure_prediction) ────────────────
+// cancel_probability becomes a small LED meter (x icon) left of the text; the
+// delay is shown as text in the chip, so it needs no meter.
 const LED_SEGMENTS = 5;
 const LED_HTML = "<i></i>".repeat(LED_SEGMENTS);
 // Display scale: a value at/above this lights the whole meter. Exact value is
 // always in the tooltip — the LEDs are a glanceable relative indicator.
 const CANCEL_PROB_FULL = 0.5; // 50% chance the train is cancelled
-const DELAY_FULL_MIN = 30;    // 30 min typical delay
+// Only show the cancellation meter when the risk is worth flagging.
+const CANCEL_PROB_SHOW = 0.2;
 // The chip turns red past either of these.
 const CANCEL_PROB_ALERT = 0.15;
 const DELAY_ALERT_MIN = 10;
@@ -221,7 +227,7 @@ function renderMeter(el, value, full, label) {
   el.setAttribute("aria-label", label);
 }
 
-// Set the SIRI severity chip and the cancel / delay meters (from the boarding
+// Set the SIRI severity chip and the cancellation meter (from the boarding
 // prediction) for a rendered situation <li>.
 function applyPrediction(li, sev, est) {
   const sevEl = li.querySelector(".sit-sev");
@@ -234,16 +240,13 @@ function applyPrediction(li, sev, est) {
   if (!meters) return;
   const dep = departurePrediction(est);
   const cancel = dep && typeof dep.cancel_probability === "number" ? dep.cancel_probability : null;
-  const delay = dep && typeof dep.delay_typ_min === "number" ? dep.delay_typ_min : null;
-  if (cancel === null && delay === null) {
+  if (cancel === null || cancel <= CANCEL_PROB_SHOW) {
     meters.remove();
     return;
   }
   li.querySelector(".sit-body")?.classList.add("has-meters");
   renderMeter(meters.querySelector(".meter-cancel"), cancel, CANCEL_PROB_FULL,
     t("rate_cancel", { pct: fmtPct(cancel) }));
-  renderMeter(meters.querySelector(".meter-trouble"), delay, DELAY_FULL_MIN,
-    t("rate_delay", { dur: fmtDurationMin(delay) }));
 }
 
 function renderLineStatus(cell, cancelledLines, delayedLines) {
@@ -426,9 +429,7 @@ function renderSituations(sits) {
         <span class="sit-sev"></span>
         <div class="sit-body">
           <div class="sit-meters">
-            <span class="rate-meter meter-cancel" role="img"><svg class="rate-ico" aria-hidden="true"><use href="#x-mark"/></svg><span class="leds" aria-hidden="true">${LED_HTML}</span></span>
-            <span class="rate-meter meter-trouble" role="img"><svg class="rate-ico" aria-hidden="true"><use href="#clock"/></svg><span class="leds" aria-hidden="true">${LED_HTML}</span></span>
-          </div>
+            <span class="rate-meter meter-cancel" role="img"><svg class="rate-ico" aria-hidden="true"><use href="#x-mark"/></svg><span class="leds" aria-hidden="true">${LED_HTML}</span></span>          </div>
           <div class="sit-content">
             <div class="sit-text"></div>
             <div class="sit-lines"></div>
@@ -453,9 +454,7 @@ function renderSituations(sits) {
         <span class="sit-sev"></span>
         <div class="sit-body">
           <div class="sit-meters">
-            <span class="rate-meter meter-cancel" role="img"><svg class="rate-ico" aria-hidden="true"><use href="#x-mark"/></svg><span class="leds" aria-hidden="true">${LED_HTML}</span></span>
-            <span class="rate-meter meter-trouble" role="img"><svg class="rate-ico" aria-hidden="true"><use href="#clock"/></svg><span class="leds" aria-hidden="true">${LED_HTML}</span></span>
-          </div>
+            <span class="rate-meter meter-cancel" role="img"><svg class="rate-ico" aria-hidden="true"><use href="#x-mark"/></svg><span class="leds" aria-hidden="true">${LED_HTML}</span></span>          </div>
           <div class="sit-content">
             <div class="sit-text"></div>
             <div class="sit-lines"></div>
