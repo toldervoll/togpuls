@@ -963,6 +963,79 @@ h2 {
   color: var(--text);
 }
 
+/* ── Trains on the route (journey-status) ─────────────────────────────── */
+.trains .block-headline { margin-top: 5px; }
+.trains-outlook { margin: var(--space-xs) 0 0; font-size: 0.875rem; line-height: 1.45; color: var(--text); }
+.trains-outlook-label { font-weight: var(--fw-bold); }
+.trains-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  margin-top: var(--space-sm);
+}
+.tr-dot {
+  --dot: var(--sev-ukjent);
+  width: 24px; height: 24px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.tr-dot::before {
+  content: "";
+  width: 12px; height: 12px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 2px solid var(--dot);
+}
+.tr-dot.st-confirmed::before { background: var(--dot); }
+.tr-dot.lvl-red    { --dot: var(--sev-hoy); }
+.tr-dot.lvl-yellow { --dot: var(--sev-middels); }
+.tr-dot.lvl-green  { --dot: var(--signal-green); }
+.tr-dot:hover, .tr-dot.sel { background: var(--surface-3); }
+.tr-dot.sel { box-shadow: inset 0 0 0 1px var(--text-muted); }
+.tr-now {
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 6px 0 5px;
+  border-left: 2px solid var(--accent);
+  color: var(--accent);
+  font-size: 0.625rem;
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.trains-readout { margin-top: var(--space-xs2); min-height: 1.2em; }
+.trains-list {
+  list-style: none;
+  padding: 0;
+  margin: var(--space-sm) 0 0;
+  display: grid;
+  gap: 4px;
+}
+.trains-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px var(--space-xs);
+  padding: 6px var(--space-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--sev-ukjent);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+}
+.trains-list li.lvl-red    { border-left-color: var(--sev-hoy); }
+.trains-list li.lvl-yellow { border-left-color: var(--sev-middels); }
+.trains-list li.lvl-green  { border-left-color: var(--signal-green); }
+.tr-time { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; }
+.tr-line { font-weight: var(--fw-bold); }
+.tr-dest { color: var(--text-muted); }
+.tr-status { margin-left: auto; font-weight: var(--fw-med); }
+.trains-footer { margin-top: var(--space-sm); }
+
 /* ── Collapsible cards ────────────────────────────────────────────────── */
 .collapsible > summary {
   list-style: none;

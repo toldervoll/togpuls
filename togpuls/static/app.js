@@ -500,6 +500,148 @@ function renderSituations(sits) {
   }
 }
 
+// ── Render: trains on the route (kix-avvik journey-status) ──────────────
+// Third-party data: its strings go in through textContent / title only, and
+// level / state are checked against the contract's values before they become
+// class names (anything else renders as grey / unknown).
+const TRAIN_LEVELS = ["red", "yellow", "green", "grey"];
+const TRAIN_STATES = ["confirmed", "predicted", "unknown"];
+let selectedTrainKey = null;
+
+function trainView(tr) {
+  const level = TRAIN_LEVELS.includes(tr.level) ? tr.level : "grey";
+  const state = TRAIN_STATES.includes(tr.state) ? tr.state : "unknown";
+  const line = typeof tr.line === "string" ? tr.line.slice(tr.line.lastIndexOf(":") + 1) : "";
+  const dest = typeof tr.destination === "string" ? tr.destination : "";
+  const time = tr.departure_time ? fmtTime(tr.departure_time) : "";
+
+  // Status text: the first rule that matches wins.
+  const status = [];
+  if (tr.removed_from_plan) status.push(t("trains_removed"));
+  else if (tr.cancelled) status.push(t("trains_cancelled"));
+  else if (state === "confirmed" && tr.delay_min > 0) status.push(t("trains_delay", { n: tr.delay_min }));
+  else if (state === "predicted" && tr.delay_p50_min > 0) status.push(t("trains_expected", { n: tr.delay_p50_min }));
+  else if (level === "red" || level === "yellow") status.push(t(`trains_level.${level}`));
+  if (tr.bus_for_train) status.push(t("trains_bus"));
+
+  const name = [line, dest, time].filter(Boolean).join(" ");
+  const label = [name, t(`trains_state.${state}`), ...status].filter(Boolean).join(" · ");
+  return {
+    level, state, line, dest, time, label,
+    status: status.join(" · "),
+    key: tr.jkey || label,
+    disrupted: level === "red" || level === "yellow" || !!tr.removed_from_plan,
+    notable: level === "red" || level === "yellow" || !!tr.removed_from_plan || !!tr.bus_for_train,
+  };
+}
+
+function renderTrains(d) {
+  const headline = $("trains-headline");
+  if (!headline) return;
+  const [outlook, strip, readout, list, footer] =
+    ["trains-outlook", "trains-strip", "trains-readout", "trains-list", "trains-footer"].map($);
+  for (const el of [outlook, strip, readout, list, footer]) el.classList.add("hidden");
+
+  const js = d.journey_status;
+  if (!d.stop_place?.to_id) { headline.textContent = t("trains_pick_dest"); return; }
+  if (!js || typeof js !== "object") { headline.textContent = t("trains_unavailable"); return; }
+  if (js.reason === "not_a_travel_day") { headline.textContent = t("trains_no_travel_day"); return; }
+
+  const depMs = (tr) => Date.parse(tr.expected_departure_time || tr.departure_time);
+  const trains = (Array.isArray(js.trains) ? js.trains : [])
+    .filter((tr) => tr && typeof tr === "object")
+    .sort((a, b) => (Date.parse(a.departure_time) || 0) - (Date.parse(b.departure_time) || 0));
+  const views = trains.map(trainView);
+
+  // Footer: coverage, unknown count, freshness of the recorded calls.
+  const unknown = views.filter((v) => v.state === "unknown").length;
+  const asOf = js.as_of && js.as_of.actuals_refreshed_at;
+  footer.textContent = [
+    t("trains_coverage"),
+    unknown ? t("trains_unknown", { n: unknown }) : "",
+    asOf ? t("trains_as_of", { time: fmtTime(asOf) }) : "",
+  ].filter(Boolean).join(" · ");
+  footer.classList.remove("hidden");
+
+  if (!views.length) { headline.textContent = t("trains_empty"); return; }
+
+  headline.textContent = t("trains_headline", {
+    n: views.filter((v) => v.disrupted).length, total: views.length,
+  });
+
+  const summary = currentLang() === "en" ? js.summary_en : js.summary;
+  if (typeof summary === "string" && summary.trim()) {
+    const label = document.createElement("span");
+    label.className = "trains-outlook-label";
+    label.textContent = t("trains_outlook");
+    outlook.replaceChildren(label, " ", summary);
+    outlook.classList.remove("hidden");
+  }
+
+  // Strip: one marker per train; the now divider sits after the last train
+  // whose departure (expected, else planned) is at or before the server's now.
+  const nowMs = Date.parse(js.now);
+  let split = 0;
+  trains.forEach((tr, i) => { if (depMs(tr) <= nowMs) split = i + 1; });
+  const counts = { red: 0, yellow: 0, green: 0, grey: 0 };
+  const nodes = [];
+  let selected = null;
+  views.forEach((v, i) => {
+    if (i === split) nodes.push(trainsNowMarker());
+    counts[v.level] += 1;
+    const dot = document.createElement("span");
+    dot.className = `tr-dot lvl-${v.level} st-${v.state}`;
+    dot.title = v.label;
+    dot.dataset.key = v.key;
+    if (v.key === selectedTrainKey) { dot.classList.add("sel"); selected = v; }
+    nodes.push(dot);
+  });
+  if (split >= views.length) nodes.push(trainsNowMarker());
+  strip.replaceChildren(...nodes);
+  strip.setAttribute("aria-label", t("trains_strip_aria", { total: views.length, ...counts }));
+  strip.classList.remove("hidden");
+  readout.textContent = selected ? selected.label : t("trains_readout_hint");
+  readout.classList.remove("hidden");
+
+  // Trains worth attention, in departure order.
+  const rows = views.filter((v) => v.notable).map((v) => {
+    const li = document.createElement("li");
+    li.className = `lvl-${v.level}`;
+    for (const [cls, text] of [["tr-time", v.time], ["tr-line", v.line], ["tr-dest", v.dest], ["tr-status", v.status]]) {
+      const span = document.createElement("span");
+      span.className = cls;
+      span.textContent = text;
+      li.appendChild(span);
+    }
+    return li;
+  });
+  list.replaceChildren(...rows);
+  list.classList.toggle("hidden", !rows.length);
+}
+
+function trainsNowMarker() {
+  const el = document.createElement("span");
+  el.className = "tr-now";
+  el.textContent = t("trains_now");
+  return el;
+}
+
+// Tap or hover a marker to show its label in the shared readout line.
+function initTrainsStrip() {
+  const strip = $("trains-strip");
+  if (!strip) return;
+  const show = (e) => {
+    const dot = e.target.closest(".tr-dot");
+    if (!dot) return;
+    selectedTrainKey = dot.dataset.key;
+    for (const el of strip.querySelectorAll(".tr-dot.sel")) el.classList.remove("sel");
+    dot.classList.add("sel");
+    $("trains-readout").textContent = dot.title;
+  };
+  strip.addEventListener("click", show);
+  strip.addEventListener("pointerover", show);
+}
+
 // ── Render: timeline ───────────────────────────────────────────────────
 
 function renderTimeline(buckets) {
@@ -997,6 +1139,7 @@ function render(d) {
 
   $("summary-text").textContent = buildSummary(d);
   renderTimeline(d.timeline || []);
+  renderTrains(d);
 
   // Situations
   renderSituations(d.situations || []);
@@ -1574,6 +1717,7 @@ document.addEventListener("i18n:change", () => {
 initThemeToggle();
 initLangToggle();
 initSituationToggle();
+initTrainsStrip();
 initBigScopeToggle();
 initStatTips();
 initRoutePicker().then(refresh);
