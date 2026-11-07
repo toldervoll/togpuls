@@ -8,21 +8,10 @@ function severityLabel(sev) {
   return t(`sev_label.${sev}`);
 }
 
-// Render the KIX cause: a known category code → friendly label, an unknown
-// code → prettified ("infrastruktur/signal" → "Infrastruktur · signal"), else
-// the cause phrase pulled from the description. Returns "" when unknown.
-function resolveCause(code, text) {
-  if (code) {
-    const key = `cause_label.${code}`;
-    const label = t(key);
-    if (label !== key) return label;
-    return code
-      .split("/")
-      .map((p) => (p ? p[0].toUpperCase() + p.slice(1) : p))
-      .join(" · ");
-  }
-  if (text) return text[0].toUpperCase() + text.slice(1);
-  return "";
+// Render the cause phrase pulled from the description, capitalised.
+// Returns "" when unknown.
+function resolveCause(text) {
+  return text ? text[0].toUpperCase() + text.slice(1) : "";
 }
 
 let situationView = "grouped"; // or "per-line"
@@ -96,16 +85,15 @@ function buildPerLineSituations(sits) {
       let e = byLine.get(line);
       if (!e) {
         e = { line, severity: ev.severity, texts: new Set(), estimate: null,
-              prediction: null, cause_code: "", cause_text: "" };
+              cause_text: "" };
         byLine.set(line, e);
       }
       e.texts.add(ev.text);
       if (e.estimate == null && ev.estimate != null) e.estimate = ev.estimate;
-      if (e.prediction == null && ev.prediction != null) e.prediction = ev.prediction;
       const cur = SEVERITY_RANK[e.severity] ?? 99;
       const inc = SEVERITY_RANK[ev.severity] ?? 99;
       if (inc < cur) e.severity = ev.severity;
-      if (!e.cause_code && !e.cause_text) { e.cause_code = ev.cause_code; e.cause_text = ev.cause_text; }
+      if (!e.cause_text) e.cause_text = ev.cause_text;
     }
   }
   return Array.from(byLine.values())
@@ -147,8 +135,6 @@ function groupSituations(sits) {
         texts: new Set(),
         count: 0,
         estimate: null,
-        prediction: null,
-        cause_code: "",
         cause_text: "",
         rank: 99,
       };
@@ -165,14 +151,11 @@ function groupSituations(sits) {
       g.text = text;
       g.severity = s.severity || "ukjent";
       if (s.estimate != null) g.estimate = s.estimate;
-      if (s.prediction != null) g.prediction = s.prediction;
-      g.cause_code = s.cause_code || "";
       g.cause_text = s.cause_text || "";
     } else if (g.estimate == null && s.estimate != null) {
       g.estimate = s.estimate;
     }
-    if (g.prediction == null && s.prediction != null) g.prediction = s.prediction;
-    if (!g.cause_code && !g.cause_text) { g.cause_code = s.cause_code || ""; g.cause_text = s.cause_text || ""; }
+    if (!g.cause_text) g.cause_text = s.cause_text || "";
   }
   return Array.from(groups.values())
     .map((g) => ({
@@ -193,157 +176,22 @@ function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-function fmtPct(x) {
-  if (x === null || x === undefined || isNaN(x)) return "—";
-  return Math.round(x * 100) + " %";
-}
-
 function fmtNum(x) {
   if (x === null || x === undefined) return "—";
   return new Intl.NumberFormat(intlLocale()).format(x);
 }
 
-function fmtDurationMin(mins) {
-  const m = Math.max(0, Math.round(mins));
-  if (m < 60) return t("dur_min", { n: m });
-  const h = Math.floor(m / 60);
-  const r = m % 60;
-  return r ? t("dur_hm", { h, m: r }) : t("dur_h", { h });
-}
-
-// ── Corridor trip-impact prediction (/impact service) ────────────────────
-// Separate from the historical estimate above: the /impact service scores the
-// specific train the passenger's trip depends on. Per situation it returns a
-// `departure_prediction` (boarding stop — will it leave, how late?) and, when
-// a destination is selected, an `arrival_prediction` (alighting stop). Each
-// carries cancel_probability (0-1) and typical / p90 delay in minutes. The
-// boarding prediction renders as its own chip beside the clear-ETA estimate.
-const TRIP_CANCEL_PROB_ALERT = 0.15; // show the cancellation pill above this prob
-const TRIP_CANCEL_PROB_HIGH = 0.5;   // …amber up to here, red above
-const TRIP_DELAY_ALERT_MIN = 10;     // delay pill turns red at/above this (min)
-
-function tripDeparturePrediction(pred) {
-  return pred && typeof pred === "object" ? pred.departure_prediction : null;
-}
-
-// Delay-pill text: the delay as a typical→p90 interval (e.g. "+2–9 min") when
-// the train runs late, falling back to a single value, then "" (nothing worth
-// flagging). Cancellation risk is its own pill — see applyTripPrediction.
-function formatTripPrediction(pred) {
-  const dep = tripDeparturePrediction(pred);
-  if (!dep || typeof dep !== "object") return "";
-  const typ = dep.delay_typ_min;
-  const p90 = dep.delay_p90_min;
-  if (typeof typ === "number" && typ > 0) {
-    return (typeof p90 === "number" && p90 > typ)
-      ? t("sit_delay_range", { lo: typ, hi: p90 })
-      : t("sit_delay", { n: typ });
-  }
-  return "";
-}
-
-// One "<stop>: delay typically +typ (p90 +p90) · cancel pct" tooltip line for
-// a single prediction, or "" when it carries nothing.
-function tripPredictionLine(p, labelKey) {
-  if (!p || typeof p !== "object") return "";
-  const bits = [];
-  if (typeof p.delay_typ_min === "number") {
-    let d = t("sit_tip_delay", { dur: fmtDurationMin(p.delay_typ_min) });
-    if (typeof p.delay_p90_min === "number") {
-      d += " " + t("sit_tip_p90", { dur: fmtDurationMin(p.delay_p90_min) });
-    }
-    bits.push(d);
-  }
-  if (typeof p.cancel_probability === "number") {
-    bits.push(t("sit_tip_cancel", { pct: fmtPct(p.cancel_probability) }));
-  }
-  if (!bits.length) return "";
-  const stop = p.stop_name ? p.stop_name + ": " : "";
-  return t(labelKey, { stop, detail: bits.join(" · ") });
-}
-
-// Plain-text title for the prediction chip: a boarding line and, when a
-// destination is selected, an alighting line.
-function tripPredictionTooltip(pred) {
-  const lines = [];
-  const dep = tripPredictionLine(pred && pred.departure_prediction, "sit_tip_dep");
-  if (dep) lines.push(dep);
-  const arr = tripPredictionLine(pred && pred.arrival_prediction, "sit_tip_arr");
-  if (arr) lines.push(arr);
-  return lines.join("\n");
-}
-
-// Fill the trip-prediction chips in a rendered <li> from the boarding
-// prediction: a delay pill (.sit-prediction) and a separate cancellation pill
-// (.sit-cancel, shown only when cancel risk exceeds the alert). Each is removed
-// when it has nothing to say. Both share the detailed hover tooltip.
-function applyTripPrediction(li, pred) {
-  const dep = tripDeparturePrediction(pred);
-  const tip = tripPredictionTooltip(pred);
-
-  // Delay pill: typical→p90 delay, red at/above the delay alert.
-  const delayEl = li.querySelector(".sit-prediction");
-  if (delayEl) {
-    const txt = formatTripPrediction(pred);
-    if (!txt) {
-      delayEl.remove();
-    } else {
-      delayEl.textContent = txt;
-      if (dep && typeof dep.delay_typ_min === "number" && dep.delay_typ_min >= TRIP_DELAY_ALERT_MIN) {
-        delayEl.classList.add("high-risk");
-      }
-      if (tip) delayEl.title = tip;
-    }
-  }
-
-  // Cancellation pill: "X % chance of cancellation" when the boarding cancel
-  // probability is above the alert threshold; removed otherwise.
-  const cancelEl = li.querySelector(".sit-cancel");
-  if (cancelEl) {
-    const p = dep && typeof dep.cancel_probability === "number" ? dep.cancel_probability : null;
-    if (p === null || p <= TRIP_CANCEL_PROB_ALERT) {
-      cancelEl.remove();
-    } else {
-      cancelEl.textContent = t("sit_cancel_pill", { pct: fmtPct(p) });
-      if (p > TRIP_CANCEL_PROB_HIGH) cancelEl.classList.add("high");
-      if (tip) cancelEl.title = tip;
-    }
-  }
-}
-
-// Attach a hover tooltip to .sit-meta showing historical profile rows
-// from estimate.alert + estimate.reopen/impact. No-ops when the estimate
-// only has the two rates already visible as LED meters (fallback path).
+// Attach a hover tooltip to .sit-meta with the cause, lines and the live
+// cancel / trouble rates from estimate.alert.
 function applyHistory(li, est, lines, cause) {
   const meta = li.querySelector(".sit-meta");
   if (!meta) return;
   const alert = est && typeof est === "object" ? est.alert : null;
-  const reopen = est && typeof est === "object" ? est.reopen : null;
-  const impact = est && typeof est === "object" ? est.impact : null;
-
-  const spread = (blk) => {
-    if (!blk) return null;
-    const p80 = typeof blk.p80_min_from_now === "number" ? fmtDurationMin(blk.p80_min_from_now) : null;
-    const p90 = typeof blk.p90_min_from_now === "number" ? fmtDurationMin(blk.p90_min_from_now) : null;
-    return p80 && p90 ? `~${p80} / ~${p90}` : (p80 || p90 || null);
-  };
 
   const rows = [
-    ["sit_hist_cancel_rate",    alert && typeof alert.cancel_rate    === "number" ? fmtRate(alert.cancel_rate)    : null],
-    ["sit_hist_trouble_rate",   alert && typeof alert.trouble_rate   === "number" ? fmtRate(alert.trouble_rate)   : null],
-    ["sit_hist_trouble_lift",   alert && typeof alert.trouble_lift   === "number" ? fmtRate(alert.trouble_lift)   : null],
-    ["sit_hist_delay_p50",      alert && typeof alert.delay_p50      === "number" ? fmtDurationMin(alert.delay_p50)      : null],
-    ["sit_hist_delay_p90",      alert && typeof alert.delay_p90      === "number" ? fmtDurationMin(alert.delay_p90)      : null],
-    ["sit_hist_exp_disruption", alert && typeof alert.exp_disruption_min === "number" ? fmtDurationMin(alert.exp_disruption_min) : null],
-    ["sit_hist_n_situations",   alert && typeof alert.n_situations   === "number" ? String(alert.n_situations)    : null],
-    ["sit_hist_reopen_spread",  spread(reopen)],
-    ["sit_hist_impact_spread",  spread(impact)],
+    ["sit_hist_cancel_rate",  alert && typeof alert.cancel_rate  === "number" ? fmtRate(alert.cancel_rate)  : null],
+    ["sit_hist_trouble_rate", alert && typeof alert.trouble_rate === "number" ? fmtRate(alert.trouble_rate) : null],
   ].filter(([, v]) => v !== null);
-
-  // The historical match hour as a plain field (matched_hour -1 = none).
-  if (alert && typeof alert.matched_hour === "number" && alert.matched_hour >= 0) {
-    rows.push(["sit_hist_hour_label", t("sit_hist_hour", { h: alert.matched_hour })]);
-  }
 
   // Cause and lines as labelled fields at the top, formatted like every other
   // row (bold label + value).
@@ -378,8 +226,8 @@ function applyHistory(li, est, lines, cause) {
 }
 
 // ── Alert metrics (estimate.alert) ──────────────────────────────────────
-// The estimate service returns an `alert` block with a risk tier; the tier
-// replaces the SIRI severity word in the left chip.
+// The backend derives an `alert` block with a risk tier from live data; the
+// tier replaces the SIRI severity word in the left chip.
 const TIER_SEV = { low: "lav", medium: "middels", high: "hoy" };
 
 function fmtRate(x) {
@@ -603,19 +451,16 @@ function renderSituations(sits) {
             <div class="sit-lines"></div>
           </div>
           <div class="sit-meta">
-            <span class="sit-cancel"></span>
-            <span class="sit-prediction"></span>
             <span class="sit-cause"></span>
           </div>
         </div>
         ${countBadge}`;
       li.querySelector(".sit-text").textContent = r.line;
       li.querySelector(".sit-lines").textContent = r.texts.join(" · ");
-      const rCause = resolveCause(r.cause_code, r.cause_text);
+      const rCause = resolveCause(r.cause_text);
       const rCauseEl = li.querySelector(".sit-cause");
       if (rCause) rCauseEl.textContent = rCause; else rCauseEl.remove();
       applyAlert(li, sev, r.estimate);
-      applyTripPrediction(li, r.prediction);
       applyHistory(li, r.estimate, [r.line], rCause);
       ul.appendChild(li);
     }
@@ -635,8 +480,6 @@ function renderSituations(sits) {
             <div class="sit-lines"></div>
           </div>
           <div class="sit-meta">
-            <span class="sit-cancel"></span>
-            <span class="sit-prediction"></span>
             <span class="sit-cause"></span>
           </div>
         </div>
@@ -647,11 +490,10 @@ function renderSituations(sits) {
         ? t("sit_also_prefix", { texts: others.join(" · ") })
         : "";
       li.querySelector(".sit-lines").textContent = lines ? t("sit_lines_prefix", { lines }) : "";
-      const gCause = resolveCause(g.cause_code, g.cause_text);
+      const gCause = resolveCause(g.cause_text);
       const gCauseEl = li.querySelector(".sit-cause");
       if (gCause) gCauseEl.textContent = gCause; else gCauseEl.remove();
       applyAlert(li, sev, g.estimate);
-      applyTripPrediction(li, g.prediction);
       applyHistory(li, g.estimate, g.lines, gCause);
       ul.appendChild(li);
     }
@@ -1059,7 +901,7 @@ function buildSummary(d) {
   // we never imply one cause for a mix of unrelated situations.
   if (groupCount > 0) {
     const causes = new Set(
-      sitGroups.map((g) => resolveCause(g.cause_code, g.cause_text)).filter(Boolean)
+      sitGroups.map((g) => resolveCause(g.cause_text)).filter(Boolean)
     );
     if (causes.size === 1) {
       sentences.push(t("summary_cause", { cause: [...causes][0] }));

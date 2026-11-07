@@ -741,7 +741,7 @@ class TogpulsBar(rumps.App):
             g = groups.get(key)
             if g is None:
                 g = {"text": text, "lines": set(), "count": 0, "rank": 99,
-                     "cause_code": "", "cause_text": ""}
+                     "cause_text": ""}
                 groups[key] = g
             g["count"] += 1
             for line in s.get("paavirker_linjer") or []:
@@ -750,10 +750,8 @@ class TogpulsBar(rumps.App):
             if r < g["rank"]:
                 g["rank"] = r
                 g["text"] = text
-                g["cause_code"] = s.get("cause_code") or ""
                 g["cause_text"] = s.get("cause_text") or ""
-            elif not g["cause_code"] and not g["cause_text"]:
-                g["cause_code"] = s.get("cause_code") or ""
+            elif not g["cause_text"]:
                 g["cause_text"] = s.get("cause_text") or ""
         return sorted(groups.values(), key=lambda g: (g["rank"], -g["count"]))
 
@@ -781,7 +779,7 @@ class TogpulsBar(rumps.App):
         if g["text"]:
             parts.append(g["text"][:44])
         text = " ".join(parts)
-        cause = (g["cause_text"] or "").strip() or (g["cause_code"] or "").strip()
+        cause = (g["cause_text"] or "").strip()
         if cause:
             text += f" · {cause[:40]}"
         if g["count"] > 1:

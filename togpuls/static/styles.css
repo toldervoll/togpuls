@@ -1093,44 +1093,6 @@ h2 {
 .sit-lines { color: var(--text-muted); font-size: var(--fs-small); flex-basis: 100%; }
 .sit-members { color: var(--text-muted); font-size: var(--fs-small); flex-basis: 100%; opacity: 0.85; }
 .sit-members:empty { display: none; }
-/* Trip-impact delay pill (boarding train) — accent-tinted, turns red when the
-   typical delay is high. Cancellation risk is the separate .sit-cancel pill. */
-.sit-prediction {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: var(--surface-3);
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  font-size: 0.6875rem;
-  font-weight: var(--fw-bold);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-.sit-prediction::before { content: "🚆"; font-weight: normal; }
-.sit-prediction.high-risk { color: var(--sev-hoy); border-color: var(--sev-hoy); }
-.sit-prediction:empty { display: none; }
-/* Cancellation-chance pill — shown when boarding cancel risk > 15%; amber up
-   to 50%, red above (.high). */
-.sit-cancel {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: var(--surface-3);
-  border: 1px solid var(--sev-middels);
-  color: var(--sev-middels);
-  font-size: 0.6875rem;
-  font-weight: var(--fw-bold);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-.sit-cancel::before { content: "✕"; font-weight: normal; }
-.sit-cancel.high { color: var(--sev-hoy); border-color: var(--sev-hoy); }
-.sit-cancel:empty { display: none; }
 .sit-cause {
   display: inline-flex;
   align-items: center;
