@@ -526,12 +526,12 @@ function trainView(tr) {
 
   const name = [line, dest, time].filter(Boolean).join(" ");
   const label = [name, t(`trains_state.${state}`), ...status].filter(Boolean).join(" · ");
+  const disrupted = level === "red" || level === "yellow" || !!tr.removed_from_plan;
   return {
-    level, state, line, dest, time, label,
+    level, state, line, dest, time, label, disrupted,
     status: status.join(" · "),
     key: tr.jkey || label,
-    disrupted: level === "red" || level === "yellow" || !!tr.removed_from_plan,
-    notable: level === "red" || level === "yellow" || !!tr.removed_from_plan || !!tr.bus_for_train,
+    notable: disrupted || !!tr.bus_for_train,
   };
 }
 
