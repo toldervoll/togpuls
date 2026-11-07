@@ -24,6 +24,7 @@ No database, no frontend build step.
 | `api/app.py` | FastAPI app, routes, `COMMON_STATIONS`, CORS, no-cache for static |
 | `api/cache.py` | `TTLCache` (20 s) — deduplicates concurrent requests per key |
 | `clients/journey_planner.py` | HTTP against Journey Planner v3 (GraphQL), `ET-Client-Name` |
+| `clients/journey_status.py` | Best-effort read of kix-avvik `notification-api/v1/journey-status` (Vy/SJ train status for a from→to route); `None` on any failure, max 6 reads/min per stop pair |
 | `queries/stop_place_query.py` | The GraphQL query |
 | `analysis.py` | All domain logic: situations, cancellations, delays, timeline |
 | `capacity.py`, `occupancy.py` | Capacity and passenger model |
@@ -55,11 +56,12 @@ API routes: `/` (widget), `/api/v1/health`, `/api/v1/stations`,
 
 ## Verification
 
-There is no test suite yet. Minimum before a change is considered done:
+Minimum before a change is considered done (from the repo root):
 
-1. `python -m compileall togpuls` passes cleanly (from the repo root).
-2. Start the app and check `GET /api/v1/health` and `GET /api/v1/analysis`.
-3. UI changes: test light + dark mode and 375 px, 700 px and 1200 px
+1. `python -m compileall togpuls` passes cleanly.
+2. `python -m unittest discover -s tests` passes (stdlib only; no pytest).
+3. Start the app and check `GET /api/v1/health` and `GET /api/v1/analysis`.
+4. UI changes: test light + dark mode and 375 px, 700 px and 1200 px
    viewports.
 
 ## Pitfalls

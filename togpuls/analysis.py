@@ -83,25 +83,6 @@ def _first_text(field) -> str:
     return ""
 
 
-def collect_situation_ids(response: dict) -> set[str]:
-    """All SIRI situation keys in a stopPlace response.
-
-    Keyed the same way the accumulator in `analyse()` keys them
-    (`situationNumber`, falling back to `id`) so estimates fetched up front
-    line up with the entries built later. Used by callers to fetch disruption
-    estimates concurrently before `analyse()` runs.
-    """
-    ids: set[str] = set()
-    quays = (response.get("stopPlace") or {}).get("quays") or []
-    for quay in quays:
-        for call in quay.get("estimatedCalls") or []:
-            for sit in call.get("situations") or []:
-                key = sit.get("situationNumber") or sit.get("id")
-                if key:
-                    ids.add(key)
-    return ids
-
-
 def _call_aimed(call: dict) -> str | None:
     return call.get("aimedDepartureTime") or call.get("aimedArrivalTime")
 
@@ -149,9 +130,7 @@ def analyse(
     to_name: str | None = None,
     past_response: dict | None = None,
     look_back_min: int = 0,
-    estimates: dict[str, object] | None = None,
 ) -> Analysis:
-    estimates = estimates or {}
     stop_place = response.get("stopPlace") or {}
     quays = stop_place.get("quays") or []
     from_id = stop_place.get("id", "")
@@ -327,7 +306,7 @@ def analyse(
                         "report_type": sit.get("reportType", "") or "",
                         "valid_from": validity.get("startTime", "") or "",
                         "valid_to": validity.get("endTime", "") or "",
-                        "estimate": estimates.get(key),
+                        "estimate": None,
                         "_lines": set(),
                         "_quays": set(),
                     }
@@ -498,8 +477,6 @@ def analyse(
     for key, entry in sit_acc.items():
         lines = sorted(entry.pop("_lines"))
         quay_ids = sorted(entry.pop("_quays"))
-        est = entry["estimate"]
-        cause_code = est.get("category") if isinstance(est, dict) else None
         sit_out: Situation = {
             "id": entry["id"],
             "situation_number": entry["situation_number"],
@@ -513,9 +490,7 @@ def analyse(
             "paavirker_linjer": lines,
             "paavirker_quays": quay_ids,
             "estimate": entry["estimate"],
-            # KIX cause code (e.g. "infrastruktur/signal"); falls back to a cause
-            # phrase pulled from the description so the UI can show it widely.
-            "cause_code": cause_code or "",
+            # Cause phrase pulled from the description so the UI can show it.
             "cause_text": _extract_cause(entry["description"])
             or _extract_cause(entry["summary"]),
         }

@@ -102,5 +102,41 @@ class FetchTest(unittest.IsolatedAsyncioTestCase):
             self.assertIsNotNone(await self._fetch(ok))
 
 
+
+def _sit(num, summary, valid_from, lines=("L1",), report_type="incident"):
+    return {"situation_number": num, "summary": summary, "valid_from": valid_from,
+            "paavirker_linjer": list(lines), "report_type": report_type}
+
+
+class ClusterTest(unittest.TestCase):
+    """Grouping uses the SIRI validity start (valid_from) as the incident onset."""
+
+    def _event_ids(self, *sits):
+        from togpuls.api.app import _cluster_situations
+        return [s["event_id"] for s in _cluster_situations(list(sits))]
+
+    def test_siblings_issued_together_group(self):
+        ids = self._event_ids(_sit("A", "Innstilt", "2026-11-06T10:00:00+01:00"),
+                              _sit("B", "Ta neste tog", "2026-11-06T10:03:00+01:00"))
+        self.assertEqual(ids, ["A", "A"])
+
+    def test_siblings_far_apart_stay_separate(self):
+        ids = self._event_ids(_sit("A", "Innstilt", "2026-11-06T10:00:00+01:00"),
+                              _sit("B", "Ta neste tog", "2026-11-06T10:10:00+01:00"))
+        self.assertEqual(ids, ["A", "B"])
+
+    def test_empty_valid_from_still_groups_identical_summary(self):
+        ids = self._event_ids(_sit("A", "Signalfeil", ""), _sit("B", "signalfeil ", ""))
+        self.assertEqual(ids, ["A", "A"])
+
+    def test_all_clear_hides_recovered_incident_without_time_gate(self):
+        from togpuls.api.app import _resolve_superseded
+        by_line = {"L1": {"future_scheduled": 10, "future_cancelled": 0,
+                          "future_delayed_gt_3min": 0}}
+        incident = _sit("A", "Signalfeil", "2026-11-06T07:00:00+01:00")
+        all_clear = _sit("B", "Normal trafikk igjen", "2026-11-06T10:00:00+01:00",
+                         report_type="general")
+        self.assertEqual(_resolve_superseded([incident, all_clear], by_line), [])
+
 if __name__ == "__main__":
     unittest.main()

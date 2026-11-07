@@ -16,11 +16,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from togpuls.analysis import analyse, build_timeline, collect_situation_ids
+from togpuls.analysis import analyse, build_timeline
 from togpuls.api.cache import TTLCache
 from togpuls.api.github_release import latest_macos_release
-from togpuls.clients.disruptions import fetch_estimates, fetch_impact
 from togpuls.clients.journey_planner import query_stop_place_departures
+from togpuls.clients.journey_status import fetch_journey_status
 from togpuls.models import Analysis
 
 DEFAULT_STOP_PLACE_ID = "NSR:StopPlace:337"  # Oslo S
@@ -77,17 +77,11 @@ HorizonMin = Annotated[
 ]
 
 # ── Risk-tier helpers ──────────────────────────────────────────────────────
-# Order risk tiers worst-first. Lower rank = more severe.
-_TIER_RANK = {"high": 0, "medium": 1, "low": 2}
-
-
 def _tier_from_rates(cancel_rate: float, trouble_rate: float) -> str | None:
     """Risk tier implied by a situation's cancellation / trouble rates.
 
     High at cancel_rate >= 0.10 or trouble_rate >= 0.30; medium at >= 0.05 /
-    >= 0.15; otherwise none. These anchors drive the risk-tier chip word and are
-    floored to live corridor rates in _compute_analysis, so the displayed tier
-    never reads lower than current data implies.
+    >= 0.15; otherwise none. These anchors drive the risk-tier chip word.
     """
     if cancel_rate >= 0.10 or trouble_rate >= 0.30:  # a meter is full
         return "high"
@@ -96,22 +90,11 @@ def _tier_from_rates(cancel_rate: float, trouble_rate: float) -> str | None:
     return None
 
 
-def _worse(*tiers: str | None) -> str | None:
-    """Return the most severe of the given tiers, ignoring None."""
-    cands = [t for t in tiers if t]
-    if not cands:
-        return None
-    return min(cands, key=lambda t: _TIER_RANK.get(t, 99))
-
-
 # ── Event clustering / supersession ─────────────────────────────────────────
 # Sibling messages of one incident (e.g. a cancellation plus its "take the next
 # train" advice) are issued seconds apart, so a tight onset window groups them
 # without chaining unrelated incidents that merely share a busy trunk line.
 SIBLING_ONSET_MIN = 5
-# An all-clear may arrive well after the incident it resolves; allow this gap
-# between their onsets when deciding what it supersedes.
-RESOLVE_ONSET_MIN = 120
 
 # An "all clear" / normalisation message. Used (with reportType=general) to
 # detect that an event is being resolved. Substring match across no/en phrasing.
@@ -122,11 +105,9 @@ _ALL_CLEAR_RX = re.compile(
 )
 
 
-def _parse_onset(estimate: object) -> datetime | None:
-    """Parse the KIX estimate's `onset` ISO timestamp; None if absent/invalid."""
-    if not isinstance(estimate, dict):
-        return None
-    raw = estimate.get("onset")
+def _parse_onset(sit: dict) -> datetime | None:
+    """The situation's SIRI validity start (`valid_from`); None if absent/invalid."""
+    raw = sit.get("valid_from")
     if not isinstance(raw, str) or not raw:
         return None
     try:
@@ -164,8 +145,8 @@ def _resolve_superseded(situations: list[dict], by_line: dict) -> list[dict]:
     An all-clear is "confirmed" when live forward data shows its own lines have
     recovered. A confirmed all-clear hides itself and any situation whose lines
     are a *subset* of its lines (so a trunk-line all-clear can't sweep away
-    unrelated incidents), gated by onset proximity and the incident's own
-    forward recovery.
+    unrelated incidents), gated by the incident's own forward recovery. There
+    is no time gate: an all-clear may arrive hours after the incident it ends.
     """
     confirmed = []
     for s in situations:
@@ -173,23 +154,19 @@ def _resolve_superseded(situations: list[dict], by_line: dict) -> list[dict]:
             continue
         lines = set(s.get("paavirker_linjer") or [])
         if lines and _forward_recovered(lines, by_line):
-            confirmed.append((id(s), lines, _parse_onset(s.get("estimate"))))
+            confirmed.append((id(s), lines))
     if not confirmed:
         return situations
 
-    confirmed_ids = {cid for cid, _, _ in confirmed}
-    tol = RESOLVE_ONSET_MIN * 60
+    confirmed_ids = {cid for cid, _ in confirmed}
     keep = []
     for s in situations:
         if id(s) in confirmed_ids:
             continue  # the confirmed all-clear itself is resolved info — hide it
         s_lines = set(s.get("paavirker_linjer") or [])
-        s_onset = _parse_onset(s.get("estimate"))
         drop = False
-        for _, ac_lines, ac_onset in confirmed:
+        for _, ac_lines in confirmed:
             if not s_lines or not s_lines.issubset(ac_lines):
-                continue
-            if s_onset and ac_onset and abs((s_onset - ac_onset).total_seconds()) > tol:
                 continue
             if not _forward_recovered(s_lines, by_line):
                 continue
@@ -229,7 +206,7 @@ def _cluster_situations(situations: list[dict]) -> list[dict]:
     for s in situations:
         info.append((
             set(s.get("paavirker_linjer") or []),
-            _parse_onset(s.get("estimate")),
+            _parse_onset(s),
             (s.get("summary") or "").strip().casefold(),
             (s.get("report_type") or "").lower(),
         ))
@@ -305,9 +282,10 @@ API_DESCRIPTION = """
 Sanntidsanalyse av togtrafikk for norske stasjoner (standard Oslo S), bygget på
 [Entur Journey Planner v3](https://developer.entur.org/pages-journeyplanner-journeyplanner).
 
-API-et henter avganger fram og tilbake i tid, slår sammen avvik (SIRI-situasjoner)
-og KIX-estimater, og returnerer en samlet `Analysis`: risikonivå, innstillings- og
-forsinkelsesrater, passasjer-/kapasitetsmodell, tidslinje og aktive situasjoner.
+API-et henter avganger fram og tilbake i tid, slår sammen avvik (SIRI-situasjoner),
+og returnerer en samlet `Analysis`: risikonivå, innstillings- og forsinkelsesrater,
+passasjer-/kapasitetsmodell, tidslinje og aktive situasjoner. Med valgt destinasjon
+følger også `journey_status`: KIX sin status for hvert Vy- og SJ-tog på strekningen.
 
 Alle analyse-endepunkt deler samme svarformat og tar `horizon_min` som styrer hvor
 langt fram avgangene hentes (standard 90 minutter). Stasjons-ID-er er NSR stop place-ID-er
@@ -378,7 +356,18 @@ async def _compute_analysis(
             start_time=past_start,
             client=client,
         )
-        future_response, past_response = await asyncio.gather(future_task, past_task)
+        # journey-status never raises, so it can share the 502-mapped gather.
+        status_task = (
+            fetch_journey_status(
+                client, stop_place_id, to_stop_place_id, now,
+                TIMELINE_SPAN_MIN, horizon_min,
+            )
+            if to_stop_place_id
+            else asyncio.sleep(0, result=None)
+        )
+        future_response, past_response, journey_status = await asyncio.gather(
+            future_task, past_task, status_task
+        )
     except httpx.HTTPError as exc:
         raise HTTPException(status_code=502, detail=f"Upstream HTTP error: {exc}") from exc
     except RuntimeError as exc:
@@ -394,23 +383,6 @@ async def _compute_analysis(
             ),
         )
 
-    situation_ids = collect_situation_ids(future_response) | collect_situation_ids(
-        past_response
-    )
-    # Two parallel enrichments: the per-situation historical estimate
-    # (/situation) feeds the tier meters and history tooltip; the corridor
-    # impact (/impact) predicts how the selected trip's trains are hit. Both
-    # are best-effort and never raise.
-    estimates, impact_preds = await asyncio.gather(
-        fetch_estimates(situation_ids, client),
-        fetch_impact(
-            client,
-            from_stop=stop_place_id,
-            to_stop=to_stop_place_id,
-            at=now.isoformat(),
-        ),
-    )
-
     to_name = COMMON_STATIONS.get(to_stop_place_id) if to_stop_place_id else None
     analysis = analyse(
         future_response,
@@ -420,8 +392,8 @@ async def _compute_analysis(
         to_name=to_name,
         past_response=past_response,
         look_back_min=TIMELINE_SPAN_MIN,
-        estimates=estimates,
     )
+    analysis["journey_status"] = journey_status
     analysis["timeline"] = build_timeline(
         past_response, future_response,
         now=now,
@@ -431,111 +403,34 @@ async def _compute_analysis(
         to_stop_place_id=to_stop_place_id,
     )
 
-    # Tier reconciliation and fallback enrichment.
+    # Risk tiers from live data. The `estimate` key (a leftover name) holds
+    # `{"alert": {cancel_rate, trouble_rate, alert_tier}}` derived from
+    # train_movements.by_line, so the tier chip and its meters never disagree.
     #
-    # The left chip (tier word) and the two LED meters (cancel_rate /
-    # trouble_rate) must never disagree: a viewer reads near-full bars as
-    # "serious", so the tier can never read lower than the bars imply.
-    #
-    # For situations WITHOUT a KIX estimate: derive cancel_rate / trouble_rate
-    # and the tier from train_movements.by_line, so meters and tier both render
-    # from current data.
-    #
-    # For situations WITH a KIX estimate: floor the KIX alert_tier to whatever
-    # the rates actually drawn as bars imply (KIX's own rates), and to any
-    # worse live data. KIX tier is a historical baseline; it must not show as
-    # lower risk than its own bars — or than what is happening right now.
-    #
-    # Informational messages (SIRI reportType=general, e.g. an "all clear")
-    # inherit corridor deviation rates from the incident they describe, so they
-    # are kept as plain low/info UNLESS KIX *and* live forward data agree the
-    # lines are still actively disrupted — only then are they treated like an
-    # incident. This is handled per-situation in the loop below.
-    # (_tier_from_rates / _worse are module-level helpers.)
+    # Informational messages (SIRI reportType=general, e.g. an all-clear)
+    # inherit the corridor rates of the incident they describe, so they get no
+    # tier; the incident carries it on its own card.
     by_line = {
         lm["linje"]: lm
         for lm in analysis.get("train_movements", {}).get("by_line", [])
     }
     for sit in analysis.get("situations", []):
-        report_type = (sit.get("report_type") or "").lower()
+        if (sit.get("report_type") or "").lower() == "general":
+            continue
         affected = [l for l in sit.get("paavirker_linjer", []) if l in by_line]
-
-        # Window-total live rates (past + future), used to floor incident tiers.
         scheduled = sum(by_line[l]["scheduled"] for l in affected)
-        rt_cancel = rt_trouble = None
-        rt_tier = None
-        if scheduled:
-            cancelled = sum(by_line[l]["cancelled"] for l in affected)
-            delayed = sum(by_line[l]["delayed_gt_3min"] for l in affected)
-            rt_cancel = cancelled / scheduled
-            rt_trouble = (cancelled + delayed) / scheduled
-            rt_tier = _tier_from_rates(rt_cancel, rt_trouble)
-
-        # Forward-only live rates (now → horizon). A line that has recovered
-        # shows no forward disruption even if its window total is still high.
-        fwd_scheduled = sum(by_line[l]["future_scheduled"] for l in affected)
-        fwd_tier = None
-        if fwd_scheduled:
-            fwd_cancelled = sum(by_line[l]["future_cancelled"] for l in affected)
-            fwd_delayed = sum(by_line[l]["future_delayed_gt_3min"] for l in affected)
-            fwd_tier = _tier_from_rates(
-                fwd_cancelled / fwd_scheduled,
-                (fwd_cancelled + fwd_delayed) / fwd_scheduled,
-            )
-
-        est = sit.get("estimate")
-        alert = est.get("alert") if isinstance(est, dict) else None
-        if not isinstance(alert, dict):
-            alert = None
-
-        # Tier implied by KIX's own rates — the ones drawn as bars.
-        kix_tier = None
-        if alert is not None:
-            kc, kt = alert.get("cancel_rate"), alert.get("trouble_rate")
-            if isinstance(kc, (int, float)) and isinstance(kt, (int, float)):
-                kix_tier = _tier_from_rates(kc, kt)
-
-        # Informational messages (reportType=general) inherit corridor deviation
-        # rates from the incident they describe — e.g. an "all clear" like
-        # "Normal hastighet" carries the same KIX rates as the cancellation it
-        # resolves. Keep these as plain low/info UNLESS KIX *and* live forward
-        # data agree the lines are still actively disrupted; only then treat the
-        # message like an incident. KIX or live alone is not enough.
-        #
-        # An all-clear ("Toget kjører igjen", "Normal hastighet") is the
-        # exception: it must never read as an active high-risk incident. The
-        # forward disruption on its line belongs to the *real* incident — which
-        # is surfaced on its own card — not to this resolving message, so an
-        # all-clear stays informational regardless of KIX/live.
-        if report_type == "general" and (_is_all_clear(sit) or not (kix_tier and fwd_tier)):
-            if alert is not None:
-                for k in ("cancel_rate", "trouble_rate", "alert_tier"):
-                    alert.pop(k, None)
+        if not scheduled:
             continue
-
-        if est is None:
-            # No KIX estimate: build the alert from live data so meters and
-            # tier both render from current movements.
-            if not scheduled:
-                continue
-            new_alert: dict = {"cancel_rate": rt_cancel, "trouble_rate": rt_trouble}
-            if rt_tier:
-                new_alert["alert_tier"] = rt_tier
-            sit["estimate"] = {"alert": new_alert}
-            continue
-
-        if not isinstance(est, dict):
-            continue
-        # Incident (or a confirmed general): floor the tier to its own drawn
-        # rates and to any worse live data, so the tier word never reads lower
-        # than the bars.
-        if alert is None:
-            alert = {}
-        cur_tier = (alert.get("alert_tier") or "").lower() or None
-        new_tier = _worse(cur_tier, kix_tier, rt_tier)
-        if new_tier and new_tier != cur_tier:
-            alert["alert_tier"] = new_tier
-            est["alert"] = alert
+        cancelled = sum(by_line[l]["cancelled"] for l in affected)
+        delayed = sum(by_line[l]["delayed_gt_3min"] for l in affected)
+        alert: dict = {
+            "cancel_rate": cancelled / scheduled,
+            "trouble_rate": (cancelled + delayed) / scheduled,
+        }
+        tier = _tier_from_rates(alert["cancel_rate"], alert["trouble_rate"])
+        if tier:
+            alert["alert_tier"] = tier
+        sit["estimate"] = {"alert": alert}
 
     # Cluster the (tier-reconciled) situations into events, drop events an
     # all-clear has resolved, and tag survivors with an event_id.
@@ -544,16 +439,6 @@ async def _compute_analysis(
     )
     # Keep affected-line / passenger aggregates in sync with the survivors.
     _recompute_affected(analysis)
-
-    # Attach the corridor trip-impact prediction to each surviving situation,
-    # keyed by situation number. Independent of the historical estimate above —
-    # the frontend renders it as its own chip alongside the tier meters.
-    if impact_preds:
-        for sit in analysis.get("situations", []):
-            num = sit.get("situation_number")
-            pred = impact_preds.get(num) if num else None
-            if pred:
-                sit["prediction"] = pred
 
     return analysis
 

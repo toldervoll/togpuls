@@ -31,19 +31,14 @@ class Situation(TypedDict, total=False):
     valid_to: str
     paavirker_linjer: list[str]
     paavirker_quays: list[str]
+    # Live-derived risk for the situation's lines (assigned in api/app.py):
+    # {"alert": {cancel_rate, trouble_rate, alert_tier?}}, or None.
     estimate: Any
-    # Corridor trip-impact prediction from the /impact service (assigned in
-    # api/app.py), keyed onto the situation by number. Carries a
-    # departure_prediction (boarding stop) and, when a destination is selected,
-    # an arrival_prediction — each with cancel_probability and delay minutes.
-    prediction: Any
     # Cluster id grouping messages that describe the same underlying event
     # (assigned in api/app.py). Several SX messages — e.g. a cancellation and
     # its "take the next train" advice — share one event_id.
     event_id: str
-    # Cause from KIX (category code, e.g. "infrastruktur/signal") and a fallback
-    # cause phrase extracted from the SIRI description. Frontend renders a label.
-    cause_code: str
+    # Cause phrase extracted from the SIRI description. Frontend renders a label.
     cause_text: str
 
 
@@ -161,3 +156,6 @@ class Analysis(TypedDict, total=False):
     passenger_estimate: PassengerEstimate
     platform_utilization: list[PlatformUsage]
     timeline: list[TimelineBucket]
+    # Raw kix-avvik journey-status response for the from→to route (see
+    # clients/journey_status.py), or None with no destination or on failure.
+    journey_status: Any
